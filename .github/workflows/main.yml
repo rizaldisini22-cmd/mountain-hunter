@@ -12,7 +12,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
-      - run: flutter create. '--platforms=android' 
+      - run: flutter create. --platforms=android
       - run: flutter clean
       - run: flutter pub get
       - run: flutter build apk --release --no-tree-shake-icons
