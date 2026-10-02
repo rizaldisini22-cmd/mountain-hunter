@@ -13,8 +13,6 @@ jobs:
         with:
           channel: stable
       - run: flutter create. --platforms=android
-      - run: |
-          sed -i "s/google_mobile_ads:.*/google_mobile_ads: ^6.0.0/" pubspec.yaml
       - run: flutter clean
       - run: flutter pub get
       - run: flutter build apk --release --no-tree-shake-icons
