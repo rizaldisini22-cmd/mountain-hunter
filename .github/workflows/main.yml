@@ -12,26 +12,13 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version: '3.27.1'
-      - run: rm -rf android
-      - run: flutter create . --platforms=android
       - run: |
-          python3 << 'PY'
-          import pathlib
-          p = pathlib.Path("android/app/src/main/AndroidManifest.xml")
-          txt = p.read_text()
-          if "APPLICATION_ID" not in txt:
-              txt = txt.replace("<application", '<meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-3940256099942544~3347511713"/>\n    <application', 1)
-              # fix duplicate if we inserted before <application
-              # we want inside application, so move it after
-              if txt.count("APPLICATION_ID")==1:
-                  # remove wrong place and insert correctly
-                  txt = txt.replace('<meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-3940256099942544~3347511713"/>\n    <application', '<application', 1)
-                  txt = txt.replace('<application', '<application\n        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-3940256099942544~3347511713"/>', 1)
-              p.write_text(txt)
-          print(p.read_text()[:1000])
-          PY
-      - run: flutter pub upgrade
+          rm -rf android
+          flutter create . --platforms=android
+          # Matiin AdMob biar gak crash
+          sed -i 's/MobileAds.instance.initialize/\/\/MobileAds.instance.initialize/g' lib/main.dart || true
+          cat lib/main.dart | grep -i mobile -n
+      - run: flutter pub get
       - run: flutter build apk --release
       - uses: actions/upload-artifact@v4
         with:
