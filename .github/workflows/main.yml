@@ -13,14 +13,24 @@ jobs:
         with:
           channel: stable
           flutter-version: '3.27.1'
+      - run: rm -rf android
       - run: flutter create . --platforms=android
-      - run: sed -i "s/8.1.0/8.5.2/g" android/settings.gradle
-      - run: sed -i "s/gradle-.*-all.zip/gradle-8.7-all.zip/" android/gradle/wrapper/gradle-wrapper.properties
       - run: |
-          MANIFEST=android/app/src/main/AndroidManifest.xml
-          if ! grep -q "APPLICATION_ID" "$MANIFEST"; then
-            sed -i '/<application/a \        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-3940256099942544~3347511713"\/>' "$MANIFEST"
-          fi
+          python3 << 'PY'
+          import pathlib
+          p = pathlib.Path("android/app/src/main/AndroidManifest.xml")
+          txt = p.read_text()
+          if "APPLICATION_ID" not in txt:
+              txt = txt.replace("<application", '<meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-3940256099942544~3347511713"/>\n    <application', 1)
+              # fix duplicate if we inserted before <application
+              # we want inside application, so move it after
+              if txt.count("APPLICATION_ID")==1:
+                  # remove wrong place and insert correctly
+                  txt = txt.replace('<meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-3940256099942544~3347511713"/>\n    <application', '<application', 1)
+                  txt = txt.replace('<application', '<application\n        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-3940256099942544~3347511713"/>', 1)
+              p.write_text(txt)
+          print(p.read_text()[:1000])
+          PY
       - run: flutter pub upgrade
       - run: flutter build apk --release
       - uses: actions/upload-artifact@v4
