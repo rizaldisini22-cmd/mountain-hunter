@@ -13,7 +13,7 @@ jobs:
         with:
           channel: stable
 
-      - run: flutter create. --platforms=android
+      - run: flutter create . --platforms=android
 
       - run: flutter clean
       - run: flutter pub get
