@@ -16,6 +16,11 @@ jobs:
       - run: flutter create . --platforms=android
       - run: sed -i "s/8.1.0/8.5.2/g" android/settings.gradle
       - run: sed -i "s/gradle-.*-all.zip/gradle-8.7-all.zip/" android/gradle/wrapper/gradle-wrapper.properties
+      - run: |
+          MANIFEST=android/app/src/main/AndroidManifest.xml
+          if ! grep -q "APPLICATION_ID" "$MANIFEST"; then
+            sed -i '/<application/a \        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-3940256099942544~3347511713"\/>' "$MANIFEST"
+          fi
       - run: flutter pub upgrade
       - run: flutter build apk --release
       - uses: actions/upload-artifact@v4
