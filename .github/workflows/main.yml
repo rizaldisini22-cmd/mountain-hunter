@@ -15,9 +15,6 @@ jobs:
 
       - run: flutter create. --platforms=android
 
-      - run: |
-          sed -i 's/MobileAds.instance.initialize/\/\/MobileAds.instance.initialize/g' lib/main.dart || true
-
       - run: flutter clean
       - run: flutter pub get
       - run: flutter build apk --release --no-tree-shake-icons
