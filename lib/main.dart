@@ -1,144 +1,193 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-void main() => runApp(const MountainHunterApp());
+void main() => runApp(const MaterialApp(home: BubbleShooter(), debugShowCheckedModeBanner: false));
 
-class MountainHunterApp extends StatelessWidget {
-  const MountainHunterApp({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Mountain Hunter',
-      theme: ThemeData(primarySwatch: Colors.green, fontFamily: 'Roboto'),
-      home: const GameScreen(),
-    );
-  }
+class BubbleShooter extends StatefulWidget {
+  const BubbleShooter({super.key});
+  @override State<BubbleShooter> createState() => _BubbleShooterState();
 }
 
-class GameScreen extends StatefulWidget {
-  const GameScreen({super.key});
-  @override
-  State<GameScreen> createState() => _GameScreenState();
-}
-
-class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateMixin {
-  int coins = 0;
-  int level = 1;
-  late AnimationController _controller;
-  final Random rand = Random();
-  List<Ball> balls = [];
-  int highScore = 0;
+class _BubbleShooterState extends State<BubbleShooter> {
+  static const cols = 10;
+  List<List<int?>> grid = [];
+  List<Color> colors = [Colors.red, Colors.blue, Colors.green, Colors.yellow, Colors.purple, Colors.cyan, Colors.orange];
+  int cur = 0, next = 1;
+  double cannonX = 0.5;
+  double angle = -pi/2;
+  bool shooting = false;
+  double sx=0, sy=0, vx=0, vy=0;
+  int level = 1, score = 0;
+  final rand = Random();
 
   @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 16))..repeat();
-    _controller.addListener(() => updateBalls());
-    loadData();
-    spawnBalls();
+  void initState(){super.initState(); genLevel(); cur=rand.nextInt(colors.length); next=rand.nextInt(colors.length);}
+
+  void genLevel(){
+    grid=[];
+    int rows = 6 + (level~/3);
+    if(rows>15) rows=15;
+    for(int r=0;r<rows;r++){
+      int cCount = (r%2==0)? cols : cols-1;
+      grid.add(List.generate(cCount, (_)=> (r<4 || rand.nextDouble()>0.25)? rand.nextInt( min(4 + level~/10, colors.length)) : null));
+    }
   }
 
-  void loadData() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      coins = prefs.getInt('coins') ?? 0;
-      highScore = prefs.getInt('high') ?? 0;
-      level = prefs.getInt('level') ?? 1;
+  void shoot(){
+    if(shooting) return;
+    setState((){
+      shooting=true; sx=cannonX; sy=0.88;
+      vx=cos(angle)*0.028; vy=sin(angle)*0.028;
     });
+    tick();
   }
 
-  void saveData() async {
-    final prefs = await SharedPreferences.getInstance();
-    prefs.setInt('coins', coins);
-    prefs.setInt('high', highScore);
-    prefs.setInt('level', level);
-  }
-
-  void spawnBalls() {
-    balls.clear();
-    int count = 3 + (level ~/ 2);
-    if (count > 15) count = 15;
-    for (int i = 0; i < count; i++) {
-      balls.add(Ball(
-        x: rand.nextDouble() * 300,
-        y: rand.nextDouble() * 500,
-        dx: (rand.nextDouble() - 0.5) * (2 + level * 0.2),
-        dy: (rand.nextDouble() - 0.5) * (2 + level * 0.2),
-        color: Colors.primaries[rand.nextInt(Colors.primaries.length)],
-        size: 30 + rand.nextDouble() * 20,
-      ));
+  void tick() async {
+    while(shooting){
+      await Future.delayed(const Duration(milliseconds: 16));
+      if(!mounted) return;
+      setState((){
+        sx+=vx; sy+=vy;
+        if(sx<=0.04 || sx>=0.96) vx=-vx;
+        if(sy<=0.05 || hitGrid(sx,sy)){ place(); return; }
+        if(sy>1.0){ shooting=false; }
+      });
     }
   }
 
-  void updateBalls() {
-    for (var b in balls) {
-      b.x += b.dx;
-      b.y += b.dy;
-      if (b.x < 0 || b.x > 350) b.dx *= -1;
-      if (b.y < 0 || b.y > 650) b.dy *= -1;
+  bool hitGrid(double x,double y){
+    int r = ((y-0.06)/0.057).floor();
+    if(r<0||r>=grid.length) return false;
+    for(int c=0;c<grid[r].length;c++){
+      if(grid[r][c]==null) continue;
+      double gx = (c + (r%2==0?0.5:1.0))/cols;
+      double gy = 0.06 + r*0.057;
+      if(sqrt(pow(x-gx,2)+pow(y-gy,2)) < 0.06) return true;
     }
-    setState(() {});
+    return false;
   }
 
-  void tapBall(int index) {
-    setState(() {
-      coins += 10 * level;
-      if (coins > highScore) highScore = coins;
-      balls.removeAt(index);
-      if (balls.isEmpty) {
-        level++;
-        if (level > 100) level = 100;
-        spawnBalls();
+  void place(){
+    int br=0, bc=0; double bd=999;
+    for(int r=0;r<grid.length+1;r++){
+      if(r>=grid.length) grid.add(List.filled(r%2==0?cols:cols-1,null));
+      for(int c=0;c<grid[r].length;c++){
+        if(grid[r][c]!=null) continue;
+        double gx=(c+(r%2==0?0.5:1.0))/cols; double gy=0.06+r*0.057;
+        double d=sqrt(pow(sx-gx,2)+pow(sy-gy,2));
+        if(d<bd){bd=d; br=r; bc=c;}
       }
+    }
+    grid[br][bc]=cur;
+    pop(br,bc);
+    setState((){
+      shooting=false; cur=next; next=rand.nextInt(min(4 + level~/8, colors.length));
+      if(grid.every((row)=>row.every((e)=>e==null))){ level++; score+=200; genLevel(); }
+      // kalah kalau turun kebawah
+      if(grid.length>13){ level=1; score=0; genLevel(); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Game Over! Bola sampai bawah")));}
     });
-    saveData();
+  }
+
+  void pop(int r,int c){
+    int col = grid[r][c]!;
+    Set<String> vis={}; List<GPos> group=[];
+    void dfs(int rr,int cc){
+      if(rr<0||rr>=grid.length||cc<0||cc>=grid[rr].length) return;
+      if(grid[rr][cc]!=col) return;
+      String k="$rr,$cc"; if(vis.contains(k)) return; vis.add(k); group.add(GPos(rr,cc));
+      for(var n in neigh(rr,cc)) dfs(n.r,n.c);
+    }
+    dfs(r,c);
+    if(group.length>=3){
+      for(var p in group) grid[p.r][p.c]=null;
+      score+=group.length*15;
+      dropFloat();
+    }
+  }
+
+  void dropFloat(){
+    Set<String> conn={};
+    void dfs2(int r,int c){
+      if(r<0||r>=grid.length||c<0||c>=grid[r].length||grid[r][c]==null) return;
+      String k="$r,$c"; if(conn.contains(k)) return; conn.add(k);
+      for(var n in neigh(r,c)) dfs2(n.r,n.c);
+    }
+    for(int c=0;c<grid[0].length;c++) dfs2(0,c);
+    for(int r=0;r<grid.length;r++) for(int c=0;c<grid[r].length;c++) if(grid[r][c]!=null &&!conn.contains("$r,$c")){ grid[r][c]=null; score+=10; }
+  }
+
+  List<GPos> neigh(int r,int c){
+    int off = (r%2==0)?-1:1;
+    return [GPos(r,c-1), GPos(r,c+1), GPos(r-1,c), GPos(r-1,c+off), GPos(r+1,c), GPos(r+1,c+off)];
   }
 
   @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context){
+    double w = MediaQuery.of(context).size.width;
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF87CEEB), Color(0xFF2E8B57), Color(0xFF8B4513)]),
-        ),
-        child: SafeArea(
-          child: Stack(
-            children: [
-              Positioned(top: 10, left: 15, right: 15, child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                Container(padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)), child: Text('🪙 $coins', style: const TextStyle(fontWeight: FontWeight.bold))),
-                Container(padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)), child: Text('⛰️ Lv $level/100', style: const TextStyle(fontWeight: FontWeight.bold))),
-                Container(padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8), decoration: BoxDecoration(color: Colors.yellow, borderRadius: BorderRadius.circular(20)), child: Text('🏆 $highScore', style: const TextStyle(fontWeight: FontWeight.bold))),
-              ])),
-              ...balls.asMap().entries.map((e) => Positioned(
-                left: e.value.x, top: e.value.y + 80,
-                child: GestureDetector(
-                  onTap: () => tapBall(e.key),
-                  child: Container(
-                    width: e.value.size, height: e.value.size,
-                    decoration: BoxDecoration(color: e.value.color, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 5)], border: Border.all(color: Colors.white, width: 2)),
-                    child: const Center(child: Text('💰', style: TextStyle(fontSize: 16))),
-                  ),
-                ),
-              )),
-              Positioned(bottom: 30, left: 20, right: 20, child: Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Colors.white.withOpacity(0.9), borderRadius: BorderRadius.circular(15)), child: const Text('Tap bola warna-warni untuk kumpulkan koin gunung! Semakin tinggi level, bola semakin cepat & rapi!', textAlign: TextAlign.center))),
-            ],
-          ),
+      backgroundColor: const Color(0xFFD8CBFF),
+      body: GestureDetector(
+        onPanUpdate: (d){
+          setState((){
+            cannonX = (d.globalPosition.dx/w).clamp(0.1, 0.9);
+            double dx = d.globalPosition.dx - w*cannonX;
+            double dy = d.globalPosition.dy - MediaQuery.of(context).size.height*0.88;
+            angle = atan2(dy,dx);
+            if(angle>-0.15) angle=-0.15; if(angle<-pi+0.15) angle=-pi+0.15;
+          });
+        },
+        onTap: shoot,
+        child: Stack(
+          children: [
+            Container(decoration: BoxDecoration(border: Border.all(color: Colors.white54, width: 2), borderRadius: BorderRadius.circular(12)), margin: const EdgeInsets.fromLTRB(8, 35, 8, 140)),
+            // bubbles
+            for(int r=0;r<grid.length;r++) for(int c=0;c<grid[r].length;c++) if(grid[r][c]!=null)
+              Positioned(left: w*(c+(r%2==0?0.5:1.0))/cols - 19, top: 42 + r*38.5, child: bubble(colors[grid[r][c]!], 38)),
+            if(shooting) Positioned(left: w*sx-19, top: MediaQuery.of(context).size.height*sy-19, child: bubble(colors[cur], 38)),
+            CustomPaint(size: Size.infinite, painter: AimPaint(cannonX, angle, shooting)),
+            // UI
+            Positioned(top: 45, left: 15, child: chip("🏆 $score")),
+            Positioned(top: 45, right: 15, child: chip("⛰️ Lv $level/2000")),
+            Positioned(
+              bottom: 0, left: 0, right: 0, child: Container(
+                height: 135, decoration: const BoxDecoration(color: Color(0xFFEDE7FF), borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+                child: Column(children: [
+                  const SizedBox(height: 8),
+                  const Text("2.000 LEVEL SERU", style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Color(0xFFE0459E), letterSpacing: 1)),
+                  const SizedBox(height: 6),
+                  Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    Column(children: [Container(width: 18, height: 18, decoration: BoxDecoration(color: colors[next], shape: BoxShape.circle)), const Text("NEXT", style: TextStyle(fontSize: 9))]),
+                    const SizedBox(width: 20),
+                    GestureDetector(onTap: shoot, child: bubble(colors[cur], 52)),
+                  ]),
+                  Text("Geser untuk arahkan • Tap untuk tembak", style: TextStyle(fontSize: 11, color: Colors.black54)),
+                ]),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
+
+  Widget chip(String t)=>Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)), child: Text(t, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)));
+
+  Widget bubble(Color c, double s){
+    return Container(width: s, height: s, decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [Colors.white, c, c.withOpacity(0.8)], center: const Alignment(-0.3,-0.4), radius: 0.9), boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 3, offset: Offset(1,2))], border: Border.all(color: Colors.white70, width: 1.5)),
+      child: Container(margin: EdgeInsets.all(s*0.18), decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withOpacity(0.6))));
+  }
 }
 
-class Ball {
-  double x, y, dx, dy, size;
-  Color color;
-  Ball({required this.x, required this.y, required this.dx, required this.dy, required this.color, required this.size});
+class AimPaint extends CustomPainter {
+  final double x, ang; final bool shooting;
+  AimPaint(this.x,this.ang,this.shooting);
+  @override void paint(Canvas canvas, Size size){
+    if(shooting) return;
+    var p=Paint()..color=Colors.yellowAccent..style=PaintingStyle.fill;
+    double cx=size.width*x, cy=size.height*0.88;
+    for(int i=1;i<14;i++){ double px=cx+cos(ang)*i*18; double py=cy+sin(ang)*i*18; if(py<45) break; canvas.drawCircle(Offset(px,py), i%2==0?5:3, p); }
+  }
+  @override bool shouldRepaint(covariant CustomPainter old)=>true;
 }
+
+class GPos{ final int r,c; GPos(this.r,this.c); }
