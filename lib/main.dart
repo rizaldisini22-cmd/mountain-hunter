@@ -1,149 +1,224 @@
 import 'package:flutter/material.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'dart:math';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   MobileAds.instance.initialize();
-  runApp(MountainHunterApp());
+  runApp(MaterialApp(home: LevelMapScreen(), debugShowCheckedModeBanner: false));
 }
 
-class MountainHunterApp extends StatelessWidget {
+// SCREEN 1: PETA LEVEL 1-100
+class LevelMapScreen extends StatefulWidget {
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Mountain Hunter',
-      theme: ThemeData(primarySwatch: Colors.green),
-      home: GamePage(),
-    );
-  }
+  State<LevelMapScreen> createState() => _LevelMapScreenState();
 }
 
-class GamePage extends StatefulWidget {
-  @override
-  _GamePageState createState() => _GamePageState();
-}
-
-class _GamePageState extends State<GamePage> with TickerProviderStateMixin {
-  int coins = 0;
-  int bestScore = 0;
-  BannerAd? bannerAd;
-  RewardedAd? rewardedAd;
-  List<Widget> fallingCoins = [];
-  Random random = Random();
+class _LevelMapScreenState extends State<LevelMapScreen> {
+  int unlockedLevel = 1;
 
   @override
   void initState() {
     super.initState();
-    _loadBanner();
-    _loadRewarded();
+    loadProgress();
   }
 
-  void _loadBanner() {
-    bannerAd = BannerAd(
-      adUnitId: 'ca-app-pub-3940256099942544/6300978111',
-      size: AdSize.banner,
-      request: AdRequest(),
-      listener: BannerAdListener(),
-    )..load();
-  }
-
-  void _loadRewarded() {
-    RewardedAd.load(
-      adUnitId: 'ca-app-pub-3940256099942544/5224354917',
-      request: AdRequest(),
-      rewardedAdLoadCallback: RewardedAdLoadCallback(
-        onAdLoaded: (ad) => rewardedAd = ad,
-        onAdFailedToLoad: (e) {},
-      ),
-    );
-  }
-
-  void _tapMountain() {
+  loadProgress() async {
+    final prefs = await SharedPreferences.getInstance();
     setState(() {
-      coins++;
-      if (coins > bestScore) bestScore = coins;
-      _addFallingCoin();
+      unlockedLevel = prefs.getInt('unlockedLevel')?? 1;
     });
-  }
-
-  void _addFallingCoin() {
-    final animController = AnimationController(
-      duration: Duration(milliseconds: 800),
-      vsync: this,
-    );
-    final animation = Tween(begin: 0.0, end: 300.0).animate(animController);
-    animController.forward();
-    setState(() {
-      fallingCoins.add(
-        AnimatedBuilder(
-          animation: animation,
-          builder: (c, child) => Positioned(
-            left: random.nextDouble() * 300,
-            top: animation.value,
-            child: Text('🪙', style: TextStyle(fontSize: 30)),
-          ),
-        ),
-      );
-    });
-    Future.delayed(Duration(milliseconds: 800), () {
-      if (mounted) setState(() => fallingCoins.removeAt(0));
-    });
-  }
-
-  void _watchAdBonus() {
-    if (rewardedAd!= null) {
-      rewardedAd!.show(onUserEarnedReward: (ad, reward) {
-        setState(() => coins += 20);
-        _loadRewarded();
-      });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Iklan belum siap, coba lagi!')),
-      );
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF87CEEB),
-      body: Stack(
+      backgroundColor: Color(0xFF0D2C3E),
+      appBar: AppBar(
+        title: Text("Mountain Hunter - 100 LEVELS ⛰️", style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: Color(0xFF0D2C3E),
+        foregroundColor: Colors.white,
+      ),
+      body: GridView.builder(
+        padding: EdgeInsets.all(12),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 5, crossAxisSpacing: 8, mainAxisSpacing: 8),
+        itemCount: 100,
+        itemBuilder: (context, index) {
+          int levelNum = index + 1;
+          bool isUnlocked = levelNum <= unlockedLevel;
+          bool isBoss = levelNum % 10 == 0;
+
+          return GestureDetector(
+            onTap: isUnlocked? () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => BubbleGameScreen(level: levelNum)));
+            } : null,
+            child: Container(
+              decoration: BoxDecoration(
+                color: isUnlocked? (isBoss? Colors.orange : Colors.blue) : Colors.grey[800],
+                borderRadius: BorderRadius.circular(12),
+                border: isBoss? Border.all(color: Colors.yellow, width: 2) : null,
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text("$levelNum", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                    if(isBoss) Text("⭐", style: TextStyle(fontSize: 10)),
+                    if(!isUnlocked) Icon(Icons.lock, color: Colors.white54, size: 14)
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// SCREEN 2: GAME BUBBLE SHOOTER NYA
+class BubbleGameScreen extends StatefulWidget {
+  final int level;
+  BubbleGameScreen({required this.level});
+  @override
+  State<BubbleGameScreen> createState() => _BubbleGameScreenState();
+}
+
+class _BubbleGameScreenState extends State<BubbleGameScreen> {
+  int score = 0;
+  int moves = 0;
+  List<Color> bubbles = [];
+  Color nextBubble = Colors.blue;
+  RewardedAd? _rewardedAd;
+  final String adUnitId = "ca-app-pub-6482727132974147/xxxx"; // GANTI ID REWARDED KAKAK
+
+  @override
+  void initState() {
+    super.initState();
+    generateLevel(widget.level);
+    loadAd();
+  }
+
+  void generateLevel(int level) {
+    Random rand = Random(level); // seed dari level biar tiap level beda tapi tetap sama kalau diulang
+    int bubbleCount = 10 + (level * 0.8).toInt(); // makin tinggi level makin banyak bola
+    if(bubbleCount > 60) bubbleCount = 60;
+
+    List<Color> colors = [Colors.purple, Colors.blue, Colors.green];
+    if(level > 20) colors.add(Colors.orange);
+    if(level > 50) colors.add(Colors.red);
+
+    bubbles = List.generate(bubbleCount, (_) => colors[rand.nextInt(colors.length)]);
+    moves = 15 + (level ~/ 2);
+    nextBubble = colors[rand.nextInt(colors.length)];
+    score = 0;
+  }
+
+  void loadAd() {
+    RewardedAd.load(adUnitId: adUnitId, request: AdRequest(), rewardedAdLoadCallback: RewardedAdLoadCallback(
+      onAdLoaded: (ad) => _rewardedAd = ad,
+      onAdFailedToLoad: (e) => print("Ad failed $e"),
+    ));
+  }
+
+  void shootBubble() {
+    setState(() {
+      // Logika simpel: tembak warna yang sama bakal hilang
+      if(bubbles.contains(nextBubble)) {
+        bubbles.removeWhere((c) => c == nextBubble);
+        score += 100;
+      } else {
+        bubbles.add(nextBubble);
+        moves--;
+      }
+      nextBubble = [Colors.purple, Colors.blue, Colors.green, Colors.orange][Random().nextInt(4)];
+
+      if(bubbles.isEmpty) {
+        winLevel();
+      }
+      if(moves <= 0 && bubbles.isNotEmpty) {
+        showGameOver();
+      }
+    });
+  }
+
+  void winLevel() async {
+    final prefs = await SharedPreferences.getInstance();
+    int unlocked = prefs.getInt('unlockedLevel')?? 1;
+    if(widget.level >= unlocked) {
+      await prefs.setInt('unlockedLevel', widget.level + 1);
+    }
+    showDialog(context: context, barrierDismissible: false, builder: (_) => AlertDialog(
+      title: Text("🎉 LEVEL ${widget.level} MENANG!"),
+      content: Text("Score: $score\nLanjut ke level ${widget.level + 1}?"),
+      actions: [
+        TextButton(onPressed: () {
+          Navigator.pop(context); Navigator.pop(context);
+        }, child: Text("KE PETA")),
+        ElevatedButton(onPressed: () {
+          Navigator.pop(context); Navigator.pop(context);
+          Navigator.push(context, MaterialPageRoute(builder: (_) => BubbleGameScreen(level: widget.level + 1)));
+        }, child: Text("LANJUT"))
+      ],
+    ));
+  }
+
+  void showGameOver() {
+    showDialog(context: context, builder: (_) => AlertDialog(
+      title: Text("Game Over 😢"),
+      content: Text("Nonton iklan untuk +5 moves?"),
+      actions: [
+        TextButton(onPressed: () { Navigator.pop(context); Navigator.pop(context); }, child: Text("KELUAR")),
+        ElevatedButton(onPressed: () {
+          if(_rewardedAd!= null) {
+            _rewardedAd!.show(onUserEarnedReward: (_, __) {
+              setState(() { moves += 5; }); Navigator.pop(context);
+            });
+          }
+        }, child: Text("NONTON IKLAN +5"))
+      ],
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Color(0xFFE8F5F9),
+      appBar: AppBar(title: Text("Level ${widget.level}"), backgroundColor: Colors.blue,
+        actions: [Center(child: Padding(padding: EdgeInsets.only(right: 16), child: Text("Score: $score | Moves: $moves", style: TextStyle(fontWeight: FontWeight.bold))))],
+      ),
+      body: Column(
         children: [
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text('MOUNTAIN HUNTER', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
-                SizedBox(height: 10),
-                Text('Koin: $coins', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
-                Text('Best: $bestScore', style: TextStyle(fontSize: 18)),
-                SizedBox(height: 30),
-                GestureDetector(
-                  onTap: _tapMountain,
-                  child: Container(
-                    width: 200, height: 200,
-                    decoration: BoxDecoration(color: Colors.green[600], borderRadius: BorderRadius.circular(100), boxShadow: [BoxShadow(blurRadius: 20, color: Colors.black26)]),
-                    child: Center(child: Text('⛰️', style: TextStyle(fontSize: 100))),
-                  ),
-                ),
-                SizedBox(height: 20),
-                Text('TAP GUNUNGNYA!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
-                SizedBox(height: 30),
-                ElevatedButton.icon(
-                  onPressed: _watchAdBonus,
-                  icon: Icon(Icons.play_circle),
-                  label: Text('Nonton Iklan +20 Koin'),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.amber, foregroundColor: Colors.black, padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15)),
-                ),
-              ],
+          Expanded(
+            child: GridView.builder(
+              padding: EdgeInsets.all(20),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 6),
+              itemCount: bubbles.length,
+              itemBuilder: (_, i) => Container(
+                margin: EdgeInsets.all(3),
+                decoration: BoxDecoration(color: bubbles[i], shape: BoxShape.circle, boxShadow: [BoxShadow(blurRadius: 4, color: Colors.black26)]),
+              ),
             ),
           ),
-         ...fallingCoins,
+          Container(
+            padding: EdgeInsets.all(20),
+            color: Colors.white,
+            child: Column(
+              children: [
+                Text("NEXT:"), SizedBox(height: 8),
+                Container(width: 50, height: 50, decoration: BoxDecoration(color: nextBubble, shape: BoxShape.circle)),
+                SizedBox(height: 16),
+                SizedBox(width: double.infinity, child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(padding: EdgeInsets.symmetric(vertical: 16), backgroundColor: Colors.orange),
+                  onPressed: shootBubble,
+                  child: Text("TEMBAK! 💥", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                ))
+              ],
+            ),
+          )
         ],
       ),
-      bottomNavigationBar: bannerAd!= null? Container(height: 50, child: AdWidget(ad: bannerAd!)) : SizedBox(),
     );
   }
 }
