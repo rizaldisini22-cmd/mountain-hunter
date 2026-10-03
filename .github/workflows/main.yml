@@ -17,7 +17,7 @@ jobs:
         run: |
           cp lib/main.dart /tmp/my_game.dart
           rm -rf android
-          flutter create --project-name mountain_hunter --org com.rizal.mountainhunter --platforms=android.
+          flutter create --project-name mountain_hunter --org com.rizal.mountainhunter --platforms=android .
           cp /tmp/my_game.dart lib/main.dart
           flutter pub add shared_preferences
           flutter build apk --release
