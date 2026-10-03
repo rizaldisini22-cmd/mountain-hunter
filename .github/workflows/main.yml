@@ -13,6 +13,7 @@ jobs:
         with:
           channel: stable
           flutter-version: '3.22.3'
+      - run: rm -rf android
       - run: flutter create --project-name mountain_holiday --platforms=android .
       - run: flutter pub get
       - run: flutter build apk --release
