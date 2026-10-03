@@ -1,16 +1,13 @@
-name: mountain_holiday
-description: A new Flutter project.
+name: mountain_hunter
+description: Mountain Hunter - Game tap-tap koin gunung penghasil uang. Dibuat di Pebayuran.
 publish_to: 'none'
 version: 1.0.0+1
-
 environment:
-  sdk: '^3.4.0'
-
+  sdk: '>=3.0.0 <4.0.0'
 dependencies:
   flutter:
     sdk: flutter
-  google_mobile_ads: ^5.1.0
+  shared_preferences: ^2.2.2
   cupertino_icons: ^1.0.2
-
 flutter:
   uses-material-design: true
