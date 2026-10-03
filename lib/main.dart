@@ -1,75 +1,27 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
 
-void main() {
-  WidgetsFlutterBinding.ensureInitialized();
-  MobileAds.instance.initialize();
-  runApp(MaterialApp(home: LevelMapScreen(), debugShowCheckedModeBanner: false));
-}
+void main() => runApp(MaterialApp(home: LevelMapScreen(), debugShowCheckedModeBanner: false));
 
-// SCREEN 1: PETA LEVEL 1-100
 class LevelMapScreen extends StatefulWidget {
-  @override
-  State<LevelMapScreen> createState() => _LevelMapScreenState();
+  @override State<LevelMapScreen> createState() => _LevelMapScreenState();
 }
-
 class _LevelMapScreenState extends State<LevelMapScreen> {
-  int unlockedLevel = 1;
-
-  @override
-  void initState() {
-    super.initState();
-    loadProgress();
-  }
-
-  loadProgress() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      unlockedLevel = prefs.getInt('unlockedLevel')?? 1;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  int unlocked = 1;
+  void initState(){super.initState(); SharedPreferences.getInstance().then((p)=>setState(()=>unlocked=p.getInt('unlocked')??1));}
+  @override Widget build(BuildContext context){
     return Scaffold(
-      backgroundColor: Color(0xFF0D2C3E),
-      appBar: AppBar(
-        title: Text("Mountain Hunter - 100 LEVELS ⛰️", style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Color(0xFF0D2C3E),
-        foregroundColor: Colors.white,
-      ),
+      backgroundColor: Color(0xFF0A2A4A),
+      appBar: AppBar(title: Text("MOUNTAIN HUNTER - 100 LEVELS", style: TextStyle(fontWeight: FontWeight.bold)), backgroundColor: Color(0xFF0A2A4A), foregroundColor: Colors.white),
       body: GridView.builder(
-        padding: EdgeInsets.all(12),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 5, crossAxisSpacing: 8, mainAxisSpacing: 8),
+        padding: EdgeInsets.all(10), gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 5, crossAxisSpacing: 8, mainAxisSpacing: 8),
         itemCount: 100,
-        itemBuilder: (context, index) {
-          int levelNum = index + 1;
-          bool isUnlocked = levelNum <= unlockedLevel;
-          bool isBoss = levelNum % 10 == 0;
-
+        itemBuilder: (_, i){
+          int lvl=i+1; bool open=lvl<=unlocked;
           return GestureDetector(
-            onTap: isUnlocked? () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => BubbleGameScreen(level: levelNum)));
-            } : null,
-            child: Container(
-              decoration: BoxDecoration(
-                color: isUnlocked? (isBoss? Colors.orange : Colors.blue) : Colors.grey[800],
-                borderRadius: BorderRadius.circular(12),
-                border: isBoss? Border.all(color: Colors.yellow, width: 2) : null,
-              ),
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text("$levelNum", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
-                    if(isBoss) Text("⭐", style: TextStyle(fontSize: 10)),
-                    if(!isUnlocked) Icon(Icons.lock, color: Colors.white54, size: 14)
-                  ],
-                ),
-              ),
-            ),
+            onTap: open?(){Navigator.push(context, MaterialPageRoute(builder: (_)=>GameScreen(level: lvl))).then((_)=>SharedPreferences.getInstance().then((p)=>setState(()=>unlocked=p.getInt('unlocked')??1)));}:null,
+            child: Container(decoration: BoxDecoration(color: open? (lvl%10==0?Colors.orange:Colors.blue) : Colors.grey[800], borderRadius: BorderRadius.circular(12), border: Border.all(color: open?Colors.white:Colors.transparent)), child: Center(child: Text("$lvl", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20)))),
           );
         },
       ),
@@ -77,143 +29,148 @@ class _LevelMapScreenState extends State<LevelMapScreen> {
   }
 }
 
-// SCREEN 2: GAME BUBBLE SHOOTER NYA
-class BubbleGameScreen extends StatefulWidget {
-  final int level;
-  BubbleGameScreen({required this.level});
-  @override
-  State<BubbleGameScreen> createState() => _BubbleGameScreenState();
+// GAME INTI - BOLA UKURAN SAMA + WARNA BANYAK
+class GameScreen extends StatefulWidget{
+  final int level; GameScreen({required this.level});
+  @override State<GameScreen> createState()=> _GameScreenState();
 }
-
-class _BubbleGameScreenState extends State<BubbleGameScreen> {
+class _GameScreenState extends State<GameScreen> {
+  // WARNA KAYAK DI FOTO KAKAK
+  final List<Color> gameColors = [Color(0xFF4CAF50), Color(0xFFFF9800), Color(0xFF2196F3), Color(0xFF9C27B0), Color(0xFFE91E63)];
+  List<List<Color?>> grid = [];
+  Color nextColor = Colors.purple;
+  int moves = 20;
   int score = 0;
-  int moves = 0;
-  List<Color> bubbles = [];
-  Color nextBubble = Colors.blue;
-  RewardedAd? _rewardedAd;
-  final String adUnitId = "ca-app-pub-6482727132974147/xxxx"; // GANTI ID REWARDED KAKAK
+  final int cols = 11;
+  final double bubbleRadius = 18; // UKURAN SAMA SEMUA!
 
-  @override
-  void initState() {
+  @override void initState(){
     super.initState();
     generateLevel(widget.level);
-    loadAd();
   }
 
-  void generateLevel(int level) {
-    Random rand = Random(level); // seed dari level biar tiap level beda tapi tetap sama kalau diulang
-    int bubbleCount = 10 + (level * 0.8).toInt(); // makin tinggi level makin banyak bola
-    if(bubbleCount > 60) bubbleCount = 60;
+  void generateLevel(int level){
+    Random rand = Random(level);
+    int rows = 6 + (level ~/ 10); // level tinggi makin banyak baris
+    if(rows>14) rows=14;
+    grid = List.generate(rows, (_) => List.generate(cols, (_) => null));
 
-    List<Color> colors = [Colors.purple, Colors.blue, Colors.green];
-    if(level > 20) colors.add(Colors.orange);
-    if(level > 50) colors.add(Colors.red);
+    int colorCount = 3;
+    if(level>15) colorCount=4;
+    if(level>40) colorCount=5;
 
-    bubbles = List.generate(bubbleCount, (_) => colors[rand.nextInt(colors.length)]);
-    moves = 15 + (level ~/ 2);
-    nextBubble = colors[rand.nextInt(colors.length)];
-    score = 0;
-  }
-
-  void loadAd() {
-    RewardedAd.load(adUnitId: adUnitId, request: AdRequest(), rewardedAdLoadCallback: RewardedAdLoadCallback(
-      onAdLoaded: (ad) => _rewardedAd = ad,
-      onAdFailedToLoad: (e) => print("Ad failed $e"),
-    ));
-  }
-
-  void shootBubble() {
-    setState(() {
-      // Logika simpel: tembak warna yang sama bakal hilang
-      if(bubbles.contains(nextBubble)) {
-        bubbles.removeWhere((c) => c == nextBubble);
-        score += 100;
-      } else {
-        bubbles.add(nextBubble);
-        moves--;
+    // BIKIN POLA KAYAK BINTANG DI LEVEL 5,10,15
+    for(int r=0;r<rows;r++){
+      for(int c=0;c<cols;c++){
+        // Staggered grid biar rapet kayak foto
+        if(r%2==1 && c==cols-1) continue;
+        grid[r][c] = gameColors[rand.nextInt(colorCount)];
       }
-      nextBubble = [Colors.purple, Colors.blue, Colors.green, Colors.orange][Random().nextInt(4)];
-
-      if(bubbles.isEmpty) {
-        winLevel();
-      }
-      if(moves <= 0 && bubbles.isNotEmpty) {
-        showGameOver();
-      }
-    });
-  }
-
-  void winLevel() async {
-    final prefs = await SharedPreferences.getInstance();
-    int unlocked = prefs.getInt('unlockedLevel')?? 1;
-    if(widget.level >= unlocked) {
-      await prefs.setInt('unlockedLevel', widget.level + 1);
     }
-    showDialog(context: context, barrierDismissible: false, builder: (_) => AlertDialog(
-      title: Text("🎉 LEVEL ${widget.level} MENANG!"),
-      content: Text("Score: $score\nLanjut ke level ${widget.level + 1}?"),
-      actions: [
-        TextButton(onPressed: () {
-          Navigator.pop(context); Navigator.pop(context);
-        }, child: Text("KE PETA")),
-        ElevatedButton(onPressed: () {
-          Navigator.pop(context); Navigator.pop(context);
-          Navigator.push(context, MaterialPageRoute(builder: (_) => BubbleGameScreen(level: widget.level + 1)));
-        }, child: Text("LANJUT"))
-      ],
-    ));
+    nextColor = gameColors[rand.nextInt(colorCount)];
+    moves = 15 + level;
+    score = 0;
+    setState((){});
   }
 
-  void showGameOver() {
-    showDialog(context: context, builder: (_) => AlertDialog(
-      title: Text("Game Over 😢"),
-      content: Text("Nonton iklan untuk +5 moves?"),
-      actions: [
-        TextButton(onPressed: () { Navigator.pop(context); Navigator.pop(context); }, child: Text("KELUAR")),
-        ElevatedButton(onPressed: () {
-          if(_rewardedAd!= null) {
-            _rewardedAd!.show(onUserEarnedReward: (_, __) {
-              setState(() { moves += 5; }); Navigator.pop(context);
-            });
-          }
-        }, child: Text("NONTON IKLAN +5"))
-      ],
-    ));
+  void shootBubble(int col){
+    if(moves<=0) return;
+    // Cari baris kosong dari bawah
+    for(int r=grid.length-1; r>=0; r--){
+      if(r%2==1 && col==cols-1) continue;
+      if(grid[r][col]==null){
+        setState((){
+          grid[r][col]=nextColor;
+          nextColor = gameColors[Random().nextInt(gameColors.length)];
+          moves--;
+          checkMatch(r,col);
+          if(isWin()) win();
+          if(moves<=0) gameOver();
+        });
+        break;
+      }
+    }
   }
 
-  @override
-  Widget build(BuildContext context) {
+  void checkMatch(int r, int c){
+    Color? target = grid[r][c];
+    if(target==null) return;
+    List<Point> visited=[];
+    List<Point> toCheck=[Point(r,c)];
+
+    while(toCheck.isNotEmpty){
+      var p=toCheck.removeLast();
+      if(visited.contains(p)) continue;
+      visited.add(p);
+      // Cek 6 tetangga (hex grid)
+      for(var d in [Point(-1,0), Point(1,0), Point(0,-1), Point(0,1), Point(-1,-1), Point(1,1)]){
+        int nr=p.x.toInt()+d.x.toInt();
+        int nc=p.y.toInt()+d.y.toInt();
+        if(nr>=0 && nr<grid.length && nc>=0 && nc<cols && grid[nr][nc]==target){
+          if(!visited.contains(Point(nr,nc))) toCheck.add(Point(nr,nc));
+        }
+      }
+    }
+    if(visited.length>=3){
+      for(var p in visited) grid[p.x.toInt()][p.y.toInt()]=null;
+      score+=visited.length*100;
+    }
+  }
+
+  bool isWin(){ return grid.every((row)=>row.every((c)=>c==null)); }
+  void win() async{
+    final prefs=await SharedPreferences.getInstance();
+    if(widget.level>= (prefs.getInt('unlocked')??1)) await prefs.setInt('unlocked', widget.level+1);
+    showDialog(context: context, barrierDismissible: false, builder: (_)=>AlertDialog(title: Text("MENANG! ⭐"), content: Text("Score $score"), actions: [TextButton(onPressed: (){Navigator.pop(context);Navigator.pop(context);}, child: Text("PETA")), ElevatedButton(onPressed: (){Navigator.pop(context);Navigator.pop(context);Navigator.push(context, MaterialPageRoute(builder: (_)=>GameScreen(level: widget.level+1)));}, child: Text("NEXT LEVEL"))]));
+  }
+  void gameOver(){ showDialog(context: context, builder: (_)=>AlertDialog(title: Text("Game Over"), content: Text("Ulangi level ${widget.level}?"), actions: [ElevatedButton(onPressed: (){Navigator.pop(context); generateLevel(widget.level);}, child: Text("ULANG"))])); }
+
+  @override Widget build(BuildContext context){
     return Scaffold(
-      backgroundColor: Color(0xFFE8F5F9),
-      appBar: AppBar(title: Text("Level ${widget.level}"), backgroundColor: Colors.blue,
-        actions: [Center(child: Padding(padding: EdgeInsets.only(right: 16), child: Text("Score: $score | Moves: $moves", style: TextStyle(fontWeight: FontWeight.bold))))],
-      ),
+      backgroundColor: Color(0xFF0A3D62),
+      appBar: AppBar(title: Text("Level ${widget.level}"), backgroundColor: Colors.blue[900], foregroundColor: Colors.white, actions: [Padding(padding: EdgeInsets.all(12), child: Center(child: Text("Score: $score | Moves: $moves", style: TextStyle(fontWeight: FontWeight.bold))))]),
       body: Column(
         children: [
           Expanded(
-            child: GridView.builder(
-              padding: EdgeInsets.all(20),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 6),
-              itemCount: bubbles.length,
-              itemBuilder: (_, i) => Container(
-                margin: EdgeInsets.all(3),
-                decoration: BoxDecoration(color: bubbles[i], shape: BoxShape.circle, boxShadow: [BoxShadow(blurRadius: 4, color: Colors.black26)]),
+            child: SingleChildScrollView(
+              child: Column(
+                children: List.generate(grid.length, (r){
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(cols, (c){
+                      if(r%2==1 && c==cols-1) return SizedBox(width: bubbleRadius*2);
+                      Color? col = grid[r][c];
+                      return GestureDetector(
+                        onTap: ()=>shootBubble(c),
+                        child: Container(
+                          width: bubbleRadius*2, height: bubbleRadius*2,
+                          margin: EdgeInsets.all(1),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: col,
+                            gradient: col!=null? RadialGradient(colors: [Colors.white.withOpacity(0.8), col, col.withOpacity(0.8)], center: Alignment(-0.3,-0.3)): null,
+                            boxShadow: col!=null? [BoxShadow(color: col.withOpacity(0.6), blurRadius: 4)]: null,
+                            border: Border.all(color: Colors.white24, width: 0.5),
+                          ),
+                          child: col!=null? Center(child: Container(width: 6, height: 6, decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle))): null,
+                        ),
+                      );
+                    }),
+                  );
+                }),
               ),
             ),
           ),
           Container(
-            padding: EdgeInsets.all(20),
-            color: Colors.white,
-            child: Column(
+            padding: EdgeInsets.all(16), color: Color(0xFF082F49),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text("NEXT:"), SizedBox(height: 8),
-                Container(width: 50, height: 50, decoration: BoxDecoration(color: nextBubble, shape: BoxShape.circle)),
-                SizedBox(height: 16),
-                SizedBox(width: double.infinity, child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(padding: EdgeInsets.symmetric(vertical: 16), backgroundColor: Colors.orange),
-                  onPressed: shootBubble,
-                  child: Text("TEMBAK! 💥", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                ))
+                Text("NEXT:", style: TextStyle(color: Colors.white)),
+                SizedBox(width: 12),
+                Container(width: 36, height: 36, decoration: BoxDecoration(shape: BoxShape.circle, color: nextColor, boxShadow: [BoxShadow(color: nextColor.withOpacity(0.8), blurRadius: 10)], border: Border.all(color: Colors.white, width: 2))),
+                SizedBox(width: 20),
+                Text("Tap kolom untuk tembak!", style: TextStyle(color: Colors.white70, fontSize: 12))
               ],
             ),
           )
@@ -221,4 +178,8 @@ class _BubbleGameScreenState extends State<BubbleGameScreen> {
       ),
     );
   }
+}
+class Point{ int x,y; Point(this.x,this.y);
+  @override bool operator ==(Object other)=>other is Point && other.x==x && other.y==y;
+  @override int get hashCode=>x*100+y;
 }
