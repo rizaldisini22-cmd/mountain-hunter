@@ -13,9 +13,15 @@ jobs:
         with:
           channel: stable
           flutter-version: '3.22.0'
-      - run: flutter pub get
-      - run: flutter build apk --release
+      - name: Fix and Build
+        run: |
+          cp lib/main.dart /tmp/my_game.dart
+          rm -rf android
+          flutter create --project-name mountain_hunter --org com.rizal.mountainhunter --platforms=android.
+          cp /tmp/my_game.dart lib/main.dart
+          flutter pub add shared_preferences
+          flutter build apk --release
       - uses: actions/upload-artifact@v4
         with:
-          name: mountain-hunter-100-levels
+          name: mountain-hunter-FINAL-bola-rapi
           path: build/app/outputs/flutter-apk/app-release.apk
