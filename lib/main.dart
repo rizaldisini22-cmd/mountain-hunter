@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
 import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  runApp(MaterialApp(debugShowCheckedModeBanner: false, home: GameKu()));
+  runApp(MaterialApp(
+    debugShowCheckedModeBanner: false,
+    title: "Bubble DANA Cuan",
+    home: GameKu()));
 }
 
 class GameKu extends StatefulWidget {
@@ -25,7 +29,24 @@ class _SGame extends State<GameKu> {
   @override
   void initState() {
     super.initState();
+    loadData();
     startGame();
+  }
+
+  Future<void> loadData() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      coin = prefs.getInt('coin')?? 0;
+      totalMain = prefs.getInt('totalMain')?? 0;
+      history = prefs.getStringList('history')?? [];
+    });
+  }
+
+  Future<void> saveData() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('coin', coin);
+    await prefs.setInt('totalMain', totalMain);
+    await prefs.setStringList('history', history);
   }
 
   void startGame() {
@@ -63,12 +84,13 @@ class _SGame extends State<GameKu> {
         coin += dapat;
         totalMain++;
         misi = 0;
+        saveData();
         showDialog(
             context: context,
             builder: (c) => AlertDialog(
-                  title: Text("MISI SELESAI!"),
-                  content: Text("+$dapat Coin! Main ke-$totalMain\n1x Main = 30-50 Coin",
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  title: Text("MISI SELESAI! 🎉"),
+                  content: Text("+$dapat Coin! Main ke-$totalMain\n1x Main = 30-50 Coin\nSaldo sekarang Rp $coin",
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   actions: [
                     ElevatedButton(
                         onPressed: () => Navigator.pop(context),
@@ -84,7 +106,7 @@ class _SGame extends State<GameKu> {
     return StatefulBuilder(builder: (context, setS) {
       return Scaffold(
         appBar: AppBar(
-            title: Text("Tukar Saldo DANA"),
+            title: Text("Tukar Saldo DANA - Bubble Cuan"),
             backgroundColor: Color(0xFF0081DF),
             foregroundColor: Colors.white),
         body: Padding(
@@ -96,8 +118,15 @@ class _SGame extends State<GameKu> {
                 decoration: BoxDecoration(
                     color: Color(0xFFE3F2FD),
                     borderRadius: BorderRadius.circular(16)),
-                child: Text("SALDO: $coin Coin = Rp $coin",
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF0081DF)), textAlign: TextAlign.center),
+                child: Column(
+                  children: [
+                    Text("SALDO: $coin Coin = Rp $coin",
+                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF0081DF)), textAlign: TextAlign.center),
+                    SizedBox(height: 4),
+                    Text("Tersimpan otomatis, gak hilang walau tutup APK",
+                        style: TextStyle(fontSize: 10, color: Colors.grey)),
+                  ],
+                ),
               ),
               SizedBox(height: 16),
               TextField(
@@ -131,14 +160,28 @@ class _SGame extends State<GameKu> {
                         }
                         setState(() {
                           coin -= n;
-                          history.insert(0, "Rp $n ke ${hp.text}");
+                          history.insert(0, "Rp $n ke ${hp.text} - ${DateTime.now().day}/${DateTime.now().month} ${DateTime.now().hour}:${DateTime.now().minute}");
                         });
+                        saveData();
                         setS(() {});
+                        Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("SUKSES Rp $n ke ${hp.text}"), backgroundColor: Colors.green));
                       },
                       child: Text("Rp $n", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: bisa? Colors.white : Colors.black45)),
                     );
                   }),
+              SizedBox(height: 20),
+              Divider(),
+              Text("RIWAYAT PENARIKAN:", style: TextStyle(fontWeight: FontWeight.bold)),
+              SizedBox(height: 8),
+              if (history.isEmpty) Text("Belum ada penarikan", style: TextStyle(color: Colors.grey, fontSize: 12)),
+              for (int k = 0; k < history.length; k++)
+                Card(
+                  child: ListTile(
+                      leading: Icon(Icons.check_circle, color: Colors.green),
+                      title: Text(history[k], style: TextStyle(fontSize: 12)),
+                      dense: true),
+                ),
             ],
           ),
         ),
@@ -164,7 +207,7 @@ class _SGame extends State<GameKu> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  Container(padding: EdgeInsets.symmetric(horizontal: 14, vertical: 7), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)), child: Text("🪙 $coin Coin", style: TextStyle(fontWeight: FontWeight.bold))),
+                  Container(padding: EdgeInsets.symmetric(horizontal: 14, vertical: 7), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)), child: Text("🪙 $coin", style: TextStyle(fontWeight: FontWeight.bold))),
                   Container(padding: EdgeInsets.symmetric(horizontal: 14, vertical: 7), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)), child: Text("Misi $misi/20", style: TextStyle(fontWeight: FontWeight.bold))),
                   Container(padding: EdgeInsets.symmetric(horizontal: 14, vertical: 7), decoration: BoxDecoration(color: Color(0xFFFFEB3B), borderRadius: BorderRadius.circular(20)), child: Text("Rp $coin", style: TextStyle(fontWeight: FontWeight.bold))),
                 ],
@@ -198,7 +241,7 @@ class _SGame extends State<GameKu> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text("Main $totalMain x\nTarik 100 - 100RB", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                    Text("Main $totalMain x\nCoin kesimpen otomatis", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                     ElevatedButton(
                         style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF0081DF)),
                         onPressed: () {
