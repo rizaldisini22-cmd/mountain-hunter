@@ -8,56 +8,44 @@ void main() {
 
 class GameKu extends StatefulWidget {
   @override
-  State createState() => SGame();
+  State<GameKu> createState() => _SGame();
 }
 
-class SGame extends State {
+class _SGame extends State<GameKu> {
   int coin = 0;
   int misi = 0;
   int totalMain = 0;
-  int level = 1;
-  List bubbles = [];
+  List<Map<String, dynamic>> bubbles = [];
   Random r = Random();
   Timer? tm;
-  List history = [];
-  List nominal = [100, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000];
+  List<String> history = [];
+  List<int> nominal = [100, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000];
+  List<Color> warna = [Colors.red, Colors.blue, Colors.green, Colors.orange, Colors.purple, Colors.pink, Colors.teal, Colors.amber];
 
+  @override
   void initState() {
     super.initState();
     startGame();
   }
 
   void startGame() {
-    bubbles = [];
-    int i = 0;
-    while (i < 12) {
+    bubbles.clear();
+    for (int i = 0; i < 12; i++) {
       bubbles.add({
         "x": r.nextDouble() * 300,
         "y": r.nextDouble() * 500 + 100,
-        "c": Colors.primaries[r.nextInt(Colors.primaries.length)],
-        "s": 45.0
+        "c": warna[r.nextInt(warna.length)],
       });
-      i++;
     }
     tm?.cancel();
     tm = Timer.periodic(Duration(milliseconds: 50), (t) {
       if (!mounted) return;
       setState(() {
-        for (var b in bubbles) {
-          b["y"] = b["y"] - 1.2;
-          if (b["y"] < -60) {
-            b["y"] = 750.0;
-            b["x"] = r.nextDouble() * 300;
-          }
-        }
-        if (bubbles.length < 12) {
-          if (r.nextDouble() > 0.9) {
-            bubbles.add({
-              "x": r.nextDouble() * 300,
-              "y": 750.0,
-              "c": Colors.primaries[r.nextInt(Colors.primaries.length)],
-              "s": 45.0
-            });
+        for (int j = 0; j < bubbles.length; j++) {
+          bubbles[j]["y"] = bubbles[j]["y"] - 1.5;
+          if (bubbles[j]["y"] < -50) {
+            bubbles[j]["y"] = 700.0;
+            bubbles[j]["x"] = r.nextDouble() * 300;
           }
         }
       });
@@ -65,52 +53,26 @@ class SGame extends State {
   }
 
   void tapBubble(int idx) {
-    if (bubbles.length <= idx) return;
     setState(() {
       misi++;
-      bubbles.removeAt(idx);
-      bubbles.add({
-        "x": r.nextDouble() * 300,
-        "y": 750.0,
-        "c": Colors.primaries[r.nextInt(Colors.primaries.length)],
-        "s": 45.0
-      });
+      bubbles[idx]["y"] = 700.0;
+      bubbles[idx]["x"] = r.nextDouble() * 300;
+      bubbles[idx]["c"] = warna[r.nextInt(warna.length)];
       if (misi >= 20) {
         int dapat = 30 + r.nextInt(21);
-        coin = coin + dapat;
-        totalMain = totalMain + 1;
+        coin += dapat;
+        totalMain++;
         misi = 0;
-        level++;
         showDialog(
             context: context,
-            barrierDismissible: false,
             builder: (c) => AlertDialog(
-                  title: Text("MISI SELESAI! 🎉"),
-                  content: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text("Main ke-$totalMain"),
-                      SizedBox(height: 8),
-                      Container(
-                          padding: EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                              color: Colors.green.shade50,
-                              borderRadius: BorderRadius.circular(12)),
-                          child: Text("+$dapat Coin",
-                              style: TextStyle(
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.w900,
-                                  color: Colors.green))),
-                      Text("1x Main = 30-50 Coin",
-                          style: TextStyle(fontSize: 11, color: Colors.grey)),
-                    ],
-                  ),
+                  title: Text("MISI SELESAI!"),
+                  content: Text("+$dapat Coin! Main ke-$totalMain\n1x Main = 30-50 Coin",
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   actions: [
                     ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        child: Text("LANJUT"))
+                        onPressed: () => Navigator.pop(context),
+                        child: Text("LANJUT MAIN"))
                   ],
                 ));
       }
@@ -119,130 +81,82 @@ class SGame extends State {
 
   Widget halamanTarik() {
     TextEditingController hp = TextEditingController();
-    return Scaffold(
-      appBar: AppBar(
-          title: Text("Tukar Saldo Dana"),
-          backgroundColor: Color(0xFF0081DF),
-          foregroundColor: Colors.white),
-      body: Padding(
-        padding: EdgeInsets.all(16),
-        child: ListView(
-          children: [
-            Container(
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                  color: Color(0xFFE3F2FD),
-                  borderRadius: BorderRadius.circular(16)),
-              child: Column(
-                children: [
-                  Text("SALDO: $coin Coin = Rp $coin",
-                      style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                          color: Color(0xFF0081DF))),
-                  SizedBox(height: 6),
-                  Text("100 Coin = Rp 100 | 1x Main 30-50 Coin",
-                      style: TextStyle(fontSize: 11, color: Colors.grey)),
-                ],
+    return StatefulBuilder(builder: (context, setS) {
+      return Scaffold(
+        appBar: AppBar(
+            title: Text("Tukar Saldo DANA"),
+            backgroundColor: Color(0xFF0081DF),
+            foregroundColor: Colors.white),
+        body: Padding(
+          padding: EdgeInsets.all(16),
+          child: ListView(
+            children: [
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                    color: Color(0xFFE3F2FD),
+                    borderRadius: BorderRadius.circular(16)),
+                child: Text("SALDO: $coin Coin = Rp $coin",
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF0081DF)), textAlign: TextAlign.center),
               ),
-            ),
-            SizedBox(height: 16),
-            TextField(
-                controller: hp,
-                decoration: InputDecoration(
-                    labelText: "No Dana 08xxx",
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.wallet)),
-                keyboardType: TextInputType.phone),
-            SizedBox(height: 16),
-            Text("MINIMAL PENARIKAN:",
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            SizedBox(height: 10),
-            GridView.builder(
-                shrinkWrap: true,
-                physics: NeverScrollableScrollPhysics(),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    childAspectRatio: 2.8,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10),
-                itemCount: nominal.length,
-                itemBuilder: (c, i) {
-                  int n = nominal[i];
-                  bool bisa = coin >= n;
-                  return ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            bisa? Color(0xFF0081DF) : Colors.grey.shade300,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12))),
-                    onPressed: () {
-                      if (!bisa) {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                            content: Text(
-                                "Kurang ${n - coin} Coin! Main lagi ${((n - coin) / 40).ceil()}x")));
-                        return;
-                      }
-                      if (hp.text.length < 10) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text("Isi No Dana dulu!")));
-                        return;
-                      }
-                      setState(() {
-                        coin = coin - n;
-                        history.insert(0, "Rp $n ke ${hp.text}");
-                      });
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text("SUKSES! Rp $n dikirim ke ${hp.text}"),
-                          backgroundColor: Colors.green));
-                    },
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text("Rp $n",
-                            style: TextStyle(
-                                fontWeight: FontWeight.w900,
-                                color: bisa? Colors.white : Colors.black45)),
-                        Text(bisa? "Bisa Tarik" : "Butuh $n Coin",
-                            style: TextStyle(
-                                fontSize: 10,
-                                color: bisa? Colors.white70 : Colors.black45)),
-                      ],
-                    ),
-                  );
-                }),
-            SizedBox(height: 20),
-            Divider(),
-            for (var h in history)
-              ListTile(
-                  leading: Icon(Icons.check_circle, color: Colors.green),
-                  title: Text(h, style: TextStyle(fontSize: 13)),
-                  dense: true),
-          ],
+              SizedBox(height: 16),
+              TextField(
+                  controller: hp,
+                  decoration: InputDecoration(
+                      labelText: "No DANA 08xxx",
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.wallet)),
+                  keyboardType: TextInputType.phone),
+              SizedBox(height: 16),
+              Text("PILIH NOMINAL:", style: TextStyle(fontWeight: FontWeight.bold)),
+              SizedBox(height: 10),
+              GridView.builder(
+                  shrinkWrap: true,
+                  physics: NeverScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, childAspectRatio: 2.2, crossAxisSpacing: 10, mainAxisSpacing: 10),
+                  itemCount: nominal.length,
+                  itemBuilder: (c, i) {
+                    int n = nominal[i];
+                    bool bisa = coin >= n;
+                    return ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: bisa? Color(0xFF0081DF) : Colors.grey.shade300),
+                      onPressed: () {
+                        if (!bisa) {
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Butuh ${n - coin} coin lagi")));
+                          return;
+                        }
+                        if (hp.text.length < 10) {
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Isi No DANA dulu")));
+                          return;
+                        }
+                        setState(() {
+                          coin -= n;
+                          history.insert(0, "Rp $n ke ${hp.text}");
+                        });
+                        setS(() {});
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("SUKSES Rp $n ke ${hp.text}"), backgroundColor: Colors.green));
+                      },
+                      child: Text("Rp $n", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: bisa? Colors.white : Colors.black45)),
+                    );
+                  }),
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    });
   }
 
+  @override
   void dispose() {
     tm?.cancel();
     super.dispose();
   }
 
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
-            gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-              Color(0xFF7DD3D8),
-              Color(0xFF5AB9A8),
-              Color(0xFF6DBF7B),
-              Color(0xFF8B6D3A)
-            ])),
+        decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF7DD3D8), Color(0xFF5AB9A8), Color(0xFF6DBF7B)])),
         child: SafeArea(
           child: Column(
             children: [
@@ -250,6 +164,54 @@ class SGame extends State {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  Container(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                  Container(padding: EdgeInsets.symmetric(horizontal: 14, vertical: 7), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)), child: Text("🪙 $coin Coin", style: TextStyle(fontWeight: FontWeight.bold))),
+                  Container(padding: EdgeInsets.symmetric(horizontal: 14, vertical: 7), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)), child: Text("Misi $misi/20", style: TextStyle(fontWeight: FontWeight.bold))),
+                  Container(padding: EdgeInsets.symmetric(horizontal: 14, vertical: 7), decoration: BoxDecoration(color: Color(0xFFFFEB3B), borderRadius: BorderRadius.circular(20)), child: Text("Rp $coin", style: TextStyle(fontWeight: FontWeight.bold))),
+                ],
+              ),
+              SizedBox(height: 8),
+              Container(padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(20)), child: Text("1x Main = 30-50 Coin | Tarik Rp 100 s/d 100RB", style: TextStyle(color: Colors.white, fontSize: 11))),
+              Expanded(
+                child: Stack(
+                  children: [
+                    for (int i = 0; i < bubbles.length; i++)
+                      Positioned(
+                        left: bubbles[i]["x"],
+                        top: bubbles[i]["y"],
+                        child: GestureDetector(
+                          onTap: () => tapBubble(i),
+                          child: Container(
+                            width: 55,
+                            height: 55,
+                            decoration: BoxDecoration(color: bubbles[i]["c"], shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 3)),
+                            child: Icon(Icons.touch_app, color: Colors.white),
+                          ),
+                        ),
+                      )
+                  ],
+                ),
+              ),
+              Container(
+                margin: EdgeInsets.all(12),
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text("Main $totalMain x\nTarik 100 - 100RB", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                    ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF0081DF)),
+                        onPressed: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (c) => halamanTarik()));
+                        },
+                        child: Text("TUKAR SALDO", style: TextStyle(color: Colors.white))),
+                  ],
+                ),
+              )
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
