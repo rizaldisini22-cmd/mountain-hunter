@@ -20,6 +20,7 @@ class SGame extends State {
   Random r = Random();
   Timer? tm;
   List history = [];
+  List nominal = [100, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000];
 
   void initState() {
     super.initState();
@@ -100,10 +101,8 @@ class SGame extends State {
                                   fontSize: 26,
                                   fontWeight: FontWeight.w900,
                                   color: Colors.green))),
-                      SizedBox(height: 8),
-                      Text("Total: $coin Coin = Rp $coin"),
-                      Text("30-50 Coin acak tiap main!",
-                          style: TextStyle(fontSize: 11, color: Colors.orange)),
+                      Text("1x Main = 30-50 Coin",
+                          style: TextStyle(fontSize: 11, color: Colors.grey)),
                     ],
                   ),
                   actions: [
@@ -111,7 +110,7 @@ class SGame extends State {
                         onPressed: () {
                           Navigator.pop(context);
                         },
-                        child: Text("MAIN LAGI"))
+                        child: Text("LANJUT"))
                   ],
                 ));
       }
@@ -122,7 +121,7 @@ class SGame extends State {
     TextEditingController hp = TextEditingController();
     return Scaffold(
       appBar: AppBar(
-          title: Text("Tarik - 1x Main 30-50 Coin"),
+          title: Text("Tukar Saldo Dana"),
           backgroundColor: Color(0xFF0081DF),
           foregroundColor: Colors.white),
       body: Padding(
@@ -136,27 +135,14 @@ class SGame extends State {
                   borderRadius: BorderRadius.circular(16)),
               child: Column(
                 children: [
-                  Text("TOTAL MAIN: $totalMain x | 1x = 30-50 Coin"),
-                  Text("$coin Coin = Rp $coin",
+                  Text("SALDO: $coin Coin = Rp $coin",
                       style: TextStyle(
-                          fontSize: 28,
+                          fontSize: 22,
                           fontWeight: FontWeight.w900,
                           color: Color(0xFF0081DF))),
-                  SizedBox(height: 8),
-                  Container(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                          color: coin >= 100? Colors.green : Colors.orange,
-                          borderRadius: BorderRadius.circular(20)),
-                      child: Text(
-                          coin >= 100
-                            ? "BISA TARIK Rp 100!"
-                              : "Main ${3 - totalMain} x lagi bisa tarik",
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12))),
+                  SizedBox(height: 6),
+                  Text("100 Coin = Rp 100 | 1x Main 30-50 Coin",
+                      style: TextStyle(fontSize: 11, color: Colors.grey)),
                 ],
               ),
             ),
@@ -169,22 +155,32 @@ class SGame extends State {
                     prefixIcon: Icon(Icons.wallet)),
                 keyboardType: TextInputType.phone),
             SizedBox(height: 16),
-            Text("Pilih Nominal:",
+            Text("MINIMAL PENARIKAN:",
                 style: TextStyle(fontWeight: FontWeight.bold)),
-            SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (int n in [100, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000])
-                  ElevatedButton(
+            SizedBox(height: 10),
+            GridView.builder(
+                shrinkWrap: true,
+                physics: NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    childAspectRatio: 2.8,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10),
+                itemCount: nominal.length,
+                itemBuilder: (c, i) {
+                  int n = nominal[i];
+                  bool bisa = coin >= n;
+                  return ElevatedButton(
                     style: ElevatedButton.styleFrom(
                         backgroundColor:
-                            coin >= n? Color(0xFF0081DF) : Colors.grey.shade300),
+                            bisa? Color(0xFF0081DF) : Colors.grey.shade300,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12))),
                     onPressed: () {
-                      if (coin < n) {
+                      if (!bisa) {
                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                            content: Text("Kurang ${n - coin} Coin!")));
+                            content: Text(
+                                "Kurang ${n - coin} Coin! Main lagi ${((n - coin) / 40).ceil()}x")));
                         return;
                       }
                       if (hp.text.length < 10) {
@@ -201,13 +197,21 @@ class SGame extends State {
                           content: Text("SUKSES! Rp $n dikirim ke ${hp.text}"),
                           backgroundColor: Colors.green));
                     },
-                    child: Text(coin >= n? "Rp $n" : "Rp $n",
-                        style: TextStyle(
-                            color: coin >= n? Colors.white : Colors.black45,
-                            fontSize: 12)),
-                  )
-              ],
-            ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text("Rp $n",
+                            style: TextStyle(
+                                fontWeight: FontWeight.w900,
+                                color: bisa? Colors.white : Colors.black45)),
+                        Text(bisa? "Bisa Tarik" : "Butuh $n Coin",
+                            style: TextStyle(
+                                fontSize: 10,
+                                color: bisa? Colors.white70 : Colors.black45)),
+                      ],
+                    ),
+                  );
+                }),
             SizedBox(height: 20),
             Divider(),
             for (var h in history)
@@ -249,108 +253,3 @@ class SGame extends State {
                   Container(
                       padding:
                           EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                      decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20)),
-                      child: Text("🪙 $coin",
-                          style: TextStyle(fontWeight: FontWeight.bold))),
-                  Container(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                      decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20)),
-                      child: Text("Main $totalMain x",
-                          style: TextStyle(fontWeight: FontWeight.bold))),
-                  Container(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                      decoration: BoxDecoration(
-                          color: Color(0xFFFFEB3B),
-                          borderRadius: BorderRadius.circular(20)),
-                      child: Text("Rp $coin",
-                          style: TextStyle(fontWeight: FontWeight.bold))),
-                ],
-              ),
-              SizedBox(height: 8),
-              Container(
-                  margin: EdgeInsets.symmetric(horizontal: 20),
-                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                      color: Colors.black54,
-                      borderRadius: BorderRadius.circular(20)),
-                  child: Text("Misi $misi/20 | 1x Main = 30-50 Coin Acak",
-                      style: TextStyle(color: Colors.white, fontSize: 11))),
-              Expanded(
-                child: Stack(
-                  children: [
-                    for (int i = 0; i < bubbles.length; i++)
-                      Positioned(
-                        left: bubbles[i]["x"],
-                        top: bubbles[i]["y"],
-                        child: GestureDetector(
-                          onTap: () => tapBubble(i),
-                          child: Container(
-                            width: bubbles[i]["s"],
-                            height: bubbles[i]["s"],
-                            decoration: BoxDecoration(
-                                color: bubbles[i]["c"],
-                                shape: BoxShape.circle,
-                                border:
-                                    Border.all(color: Colors.white, width: 2.5)),
-                            child: Center(
-                                child: Text("${20 - misi}",
-                                    style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 10))),
-                          ),
-                        ),
-                      )
-                  ],
-                ),
-              ),
-              Container(
-                margin: EdgeInsets.all(12),
-                padding: EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12)),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text("1x Main = 30-50 Coin",
-                            style: TextStyle(
-                                fontSize: 12, fontWeight: FontWeight.bold)),
-                        Text("$coin Coin = Rp $coin",
-                            style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w900,
-                                color: Colors.green)),
-                      ],
-                    ),
-                    ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor: Color(0xFF0081DF)),
-                        onPressed: () {
-                          Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (c) => halamanTarik()));
-                        },
-                        child: Text("TUKAR DANA",
-                            style:
-                                TextStyle(color: Colors.white, fontSize: 12))),
-                  ],
-                ),
-              )
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
