@@ -8,60 +8,38 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Convert JPG to Real PNG Icon
+      - name: Convert Icon
         run: |
           pip install pillow
-          python3 -c "
-          from PIL import Image
-          import glob, os
-          # cari file jpg kakak
-          jpg_files = glob.glob('*.jpg') + glob.glob('IMG-*.jpg')
-          if jpg_files:
-              src = jpg_files[0]
-              print(f'Converting {src} to PNG...')
-              im = Image.open(src).convert('RGBA')
-              # resize jadi 1024x1024 biar HD
-              im = im.resize((1024, 1024))
-              im.save('icon.png', 'PNG')
-              im.save('assets_icon.png', 'PNG')
-              print('PNG valid created!')
-          "
+          python3 -c "from PIL import Image; import glob; s=glob.glob('*.jpg')[0]; Image.open(s).convert('RGBA').resize((1024,1024)).save('icon.png','PNG')"
           mkdir -p assets
           cp icon.png assets/icon.png || true
           cp -r lib lib_backup || true
           cp pubspec.yaml pubspec_backup.yaml || true
           rm -rf android
-
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
-
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.24.5'
           channel: stable
-
-      - name: Fix android project
+      - name: Fix android
         run: |
-          flutter create --project-name mountain_hunter -t app --platforms=android.
+          flutter create --project-name mountain_hunter .
           rm -rf lib
           mv lib_backup lib
           mv pubspec_backup.yaml pubspec.yaml
           cp icon.png assets/icon.png || true
-          # pasang icon PNG VALID
           for d in android/app/src/main/res/mipmap-*; do cp icon.png $d/ic_launcher.png; cp icon.png $d/ic_launcher_round.png; done
-          echo "Icon bubble PNG valid terpasang!"
-
       - name: Build APK
         run: |
           flutter clean
           flutter pub get
           flutter build apk --release
-
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
