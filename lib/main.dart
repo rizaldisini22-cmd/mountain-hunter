@@ -1,193 +1,129 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+void main()=>runApp(MaterialApp(home: TarikDanaOnly(coins: 4732), debugShowCheckedModeBanner: false));
 
-void main() => runApp(const MaterialApp(home: BubbleShooter(), debugShowCheckedModeBanner: false));
-
-class BubbleShooter extends StatefulWidget {
-  const BubbleShooter({super.key});
-  @override State<BubbleShooter> createState() => _BubbleShooterState();
+class TarikDanaOnly extends StatefulWidget{
+  final int coins; const TarikDanaOnly({super.key, required this.coins});
+  @override State<TarikDanaOnly> createState()=> _TarikOnly();
 }
 
-class _BubbleShooterState extends State<BubbleShooter> {
-  static const cols = 10;
-  List<List<int?>> grid = [];
-  List<Color> colors = [Colors.red, Colors.blue, Colors.green, Colors.yellow, Colors.purple, Colors.cyan, Colors.orange];
-  int cur = 0, next = 1;
-  double cannonX = 0.5;
-  double angle = -pi/2;
-  bool shooting = false;
-  double sx=0, sy=0, vx=0, vy=0;
-  int level = 1, score = 0;
-  final rand = Random();
+class _TarikOnly extends State<TarikDanaOnly>{
+  late int cur; String noDana="";
+  @override void initState(){super.initState(); cur=widget.coins;}
+  double get rpTotal => cur / 59.0; // 59 Emas = Rp1 (sesuai foto kakak)
 
-  @override
-  void initState(){super.initState(); genLevel(); cur=rand.nextInt(colors.length); next=rand.nextInt(colors.length);}
+  final List<Map> list = [
+    {"rp":50, "emas":2950, "limit":"10 Kali/Hari"},
+    {"rp":100, "emas":5900, "limit":"15 Kali/Hari"},
+    {"rp":300, "emas":17700, "limit":"15 Kali/Hari"},
+    {"rp":1000, "emas":59000, "limit":"5 Kali/Hari"},
+    {"rp":5000, "emas":295000, "limit":"5 Kali/Hari"},
+    {"rp":10000, "emas":590000, "limit":"1 Kali/Hari"},
+    {"rp":30000, "emas":1770000, "limit":"1 Kali/Hari"},
+    {"rp":100000, "emas":5900000, "limit":"1 Kali/Hari"},
+    {"rp":200000, "emas":11800000, "limit":"1 Kali/Hari"},
+  ];
 
-  void genLevel(){
-    grid=[];
-    int rows = 6 + (level~/3);
-    if(rows>15) rows=15;
-    for(int r=0;r<rows;r++){
-      int cCount = (r%2==0)? cols : cols-1;
-      grid.add(List.generate(cCount, (_)=> (r<4 || rand.nextDouble()>0.25)? rand.nextInt( min(4 + level~/10, colors.length)) : null));
+  void prosesTarik(Map it){
+    if(cur < it["emas"]){
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Emas kurang! Butuh ${it["emas"]}, kamu ${cur}")));
+      return;
     }
-  }
-
-  void shoot(){
-    if(shooting) return;
-    setState((){
-      shooting=true; sx=cannonX; sy=0.88;
-      vx=cos(angle)*0.028; vy=sin(angle)*0.028;
-    });
-    tick();
-  }
-
-  void tick() async {
-    while(shooting){
-      await Future.delayed(const Duration(milliseconds: 16));
-      if(!mounted) return;
-      setState((){
-        sx+=vx; sy+=vy;
-        if(sx<=0.04 || sx>=0.96) vx=-vx;
-        if(sy<=0.05 || hitGrid(sx,sy)){ place(); return; }
-        if(sy>1.0){ shooting=false; }
-      });
-    }
-  }
-
-  bool hitGrid(double x,double y){
-    int r = ((y-0.06)/0.057).floor();
-    if(r<0||r>=grid.length) return false;
-    for(int c=0;c<grid[r].length;c++){
-      if(grid[r][c]==null) continue;
-      double gx = (c + (r%2==0?0.5:1.0))/cols;
-      double gy = 0.06 + r*0.057;
-      if(sqrt(pow(x-gx,2)+pow(y-gy,2)) < 0.06) return true;
-    }
-    return false;
-  }
-
-  void place(){
-    int br=0, bc=0; double bd=999;
-    for(int r=0;r<grid.length+1;r++){
-      if(r>=grid.length) grid.add(List.filled(r%2==0?cols:cols-1,null));
-      for(int c=0;c<grid[r].length;c++){
-        if(grid[r][c]!=null) continue;
-        double gx=(c+(r%2==0?0.5:1.0))/cols; double gy=0.06+r*0.057;
-        double d=sqrt(pow(sx-gx,2)+pow(sy-gy,2));
-        if(d<bd){bd=d; br=r; bc=c;}
-      }
-    }
-    grid[br][bc]=cur;
-    pop(br,bc);
-    setState((){
-      shooting=false; cur=next; next=rand.nextInt(min(4 + level~/8, colors.length));
-      if(grid.every((row)=>row.every((e)=>e==null))){ level++; score+=200; genLevel(); }
-      // kalah kalau turun kebawah
-      if(grid.length>13){ level=1; score=0; genLevel(); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Game Over! Bola sampai bawah")));}
-    });
-  }
-
-  void pop(int r,int c){
-    int col = grid[r][c]!;
-    Set<String> vis={}; List<GPos> group=[];
-    void dfs(int rr,int cc){
-      if(rr<0||rr>=grid.length||cc<0||cc>=grid[rr].length) return;
-      if(grid[rr][cc]!=col) return;
-      String k="$rr,$cc"; if(vis.contains(k)) return; vis.add(k); group.add(GPos(rr,cc));
-      for(var n in neigh(rr,cc)) dfs(n.r,n.c);
-    }
-    dfs(r,c);
-    if(group.length>=3){
-      for(var p in group) grid[p.r][p.c]=null;
-      score+=group.length*15;
-      dropFloat();
-    }
-  }
-
-  void dropFloat(){
-    Set<String> conn={};
-    void dfs2(int r,int c){
-      if(r<0||r>=grid.length||c<0||c>=grid[r].length||grid[r][c]==null) return;
-      String k="$r,$c"; if(conn.contains(k)) return; conn.add(k);
-      for(var n in neigh(r,c)) dfs2(n.r,n.c);
-    }
-    for(int c=0;c<grid[0].length;c++) dfs2(0,c);
-    for(int r=0;r<grid.length;r++) for(int c=0;c<grid[r].length;c++) if(grid[r][c]!=null &&!conn.contains("$r,$c")){ grid[r][c]=null; score+=10; }
-  }
-
-  List<GPos> neigh(int r,int c){
-    int off = (r%2==0)?-1:1;
-    return [GPos(r,c-1), GPos(r,c+1), GPos(r-1,c), GPos(r-1,c+off), GPos(r+1,c), GPos(r+1,c+off)];
-  }
-
-  @override
-  Widget build(BuildContext context){
-    double w = MediaQuery.of(context).size.width;
-    return Scaffold(
-      backgroundColor: const Color(0xFFD8CBFF),
-      body: GestureDetector(
-        onPanUpdate: (d){
-          setState((){
-            cannonX = (d.globalPosition.dx/w).clamp(0.1, 0.9);
-            double dx = d.globalPosition.dx - w*cannonX;
-            double dy = d.globalPosition.dy - MediaQuery.of(context).size.height*0.88;
-            angle = atan2(dy,dx);
-            if(angle>-0.15) angle=-0.15; if(angle<-pi+0.15) angle=-pi+0.15;
-          });
-        },
-        onTap: shoot,
-        child: Stack(
-          children: [
-            Container(decoration: BoxDecoration(border: Border.all(color: Colors.white54, width: 2), borderRadius: BorderRadius.circular(12)), margin: const EdgeInsets.fromLTRB(8, 35, 8, 140)),
-            // bubbles
-            for(int r=0;r<grid.length;r++) for(int c=0;c<grid[r].length;c++) if(grid[r][c]!=null)
-              Positioned(left: w*(c+(r%2==0?0.5:1.0))/cols - 19, top: 42 + r*38.5, child: bubble(colors[grid[r][c]!], 38)),
-            if(shooting) Positioned(left: w*sx-19, top: MediaQuery.of(context).size.height*sy-19, child: bubble(colors[cur], 38)),
-            CustomPaint(size: Size.infinite, painter: AimPaint(cannonX, angle, shooting)),
-            // UI
-            Positioned(top: 45, left: 15, child: chip("🏆 $score")),
-            Positioned(top: 45, right: 15, child: chip("⛰️ Lv $level/2000")),
-            Positioned(
-              bottom: 0, left: 0, right: 0, child: Container(
-                height: 135, decoration: const BoxDecoration(color: Color(0xFFEDE7FF), borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-                child: Column(children: [
-                  const SizedBox(height: 8),
-                  const Text("2.000 LEVEL SERU", style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Color(0xFFE0459E), letterSpacing: 1)),
-                  const SizedBox(height: 6),
-                  Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    Column(children: [Container(width: 18, height: 18, decoration: BoxDecoration(color: colors[next], shape: BoxShape.circle)), const Text("NEXT", style: TextStyle(fontSize: 9))]),
-                    const SizedBox(width: 20),
-                    GestureDetector(onTap: shoot, child: bubble(colors[cur], 52)),
-                  ]),
-                  Text("Geser untuk arahkan • Tap untuk tembak", style: TextStyle(fontSize: 11, color: Colors.black54)),
-                ]),
-              ),
-            ),
-          ],
+    showDialog(context: context, builder: (c)=> AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Text("TUKAR SALDO DANA", style: TextStyle(fontWeight: FontWeight.w900, fontSize:16)),
+      content: Column(mainAxisSize: MainAxisSize.min, children:[
+        Container(padding: EdgeInsets.all(12), decoration: BoxDecoration(color: Colors.blue[50], borderRadius: BorderRadius.circular(12)), child: Row(children:[
+          Image.network("https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.png", width:40, errorBuilder: (c,e,s)=> Icon(Icons.account_balance_wallet, color: Colors.blue)),
+          SizedBox(width:10),
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children:[
+            Text("Rp${it["rp"]}", style: TextStyle(fontWeight: FontWeight.bold, fontSize:18)),
+            Text("${it["emas"]} Emas", style: TextStyle(fontSize:12))
+          ])
+        ])),
+        SizedBox(height:12),
+        TextField(
+          keyboardType: TextInputType.phone,
+          decoration: InputDecoration(
+            labelText: "No. DANA",
+            hintText: "08xxxxxxxxxx",
+            prefixIcon: Icon(Icons.phone_android, color: Colors.blue),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))
+          ),
+          onChanged: (v)=> noDana=v,
         ),
+        SizedBox(height:8),
+        Text("Penarikan manual 1x24 jam akan di TF admin ke No. DANA kamu", style: TextStyle(fontSize:10, color: Colors.grey))
+      ]),
+      actions:[
+        TextButton(onPressed: ()=> Navigator.pop(c), child: Text("BATAL")),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF118EEA)),
+          onPressed: (){
+            if(noDana.length < 10){
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Isi No. DANA dulu kak!")));
+              return;
+            }
+            setState(()=> cur -= it["emas"] as int);
+            Navigator.pop(c);
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text("BERHASIL! Rp${it["rp"]} ke DANA $noDana - PENDING - Admin akan TF 24 jam"),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds:4),
+            ));
+          },
+          child: Text("TUKAR SEKARANG", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))
+        )
+      ],
+    ));
+  }
+
+  @override Widget build(BuildContext context){
+    return Scaffold(
+      body: Container(
+        color: Color(0xFF8B5A2B), // kayu
+        child: SafeArea(child: Column(children:[
+          // Header Tarik Dana
+          Padding(padding: EdgeInsets.all(12), child: Row(children:[
+            Container(padding: EdgeInsets.symmetric(horizontal:12,vertical:6), decoration: BoxDecoration(color: Color(0xFFFFE8A0), borderRadius: BorderRadius.circular(20)), child: Text("Tarik Dana", style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF5D4037)))),
+            Spacer(),
+            Icon(Icons.access_time, color: Colors.white70)
+          ])),
+          // Saldo
+          Container(margin: EdgeInsets.all(12), padding: EdgeInsets.all(16), decoration: BoxDecoration(color: Color(0xFFFFF3A0), borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.brown, width:2)),
+            child: Row(children:[
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children:[
+                Text("≈ Rp${rpTotal.toStringAsFixed(0)}", style: TextStyle(fontSize:24, fontWeight: FontWeight.w900, color: Color(0xFF8B5A2B))),
+                Row(children:[Icon(Icons.monetization_on, color: Colors.orange, size:20), SizedBox(width:4), Text("$cur Emas", style: TextStyle(fontWeight: FontWeight.bold))])
+              ]),
+              Spacer(),
+              Container(padding: EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)), child: Column(children:[Text("Indonesia"), Text("(IDR)", style: TextStyle(fontWeight: FontWeight.bold)), Text("🇮🇩")]))
+            ]),
+          ),
+          Padding(padding: EdgeInsets.symmetric(horizontal:12), child: Align(alignment: Alignment.centerLeft, child: Text("Metode penarikan", style: TextStyle(color: Colors.white70, fontSize:12)))),
+          SizedBox(height:6),
+          Container(margin: EdgeInsets.symmetric(horizontal:12), padding: EdgeInsets.symmetric(horizontal:12,vertical:10), decoration: BoxDecoration(color: Color(0xFFFFF8B0), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white, width:2)), child: Row(children:[Icon(Icons.account_balance_wallet, color: Color(0xFF118EEA)), SizedBox(width:8), Text("Dana", style: TextStyle(fontWeight: FontWeight.bold)), Spacer(), Icon(Icons.check_circle, color: Colors.green)])),
+
+          SizedBox(height:12),
+          Expanded(child: Container(margin: EdgeInsets.symmetric(horizontal:12), padding: EdgeInsets.all(12), decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(16)), child: GridView.builder(gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, childAspectRatio: 1.5, crossAxisSpacing:10, mainAxisSpacing:10), itemCount: list.length, itemBuilder: (c,i){
+            var it=list[i]; bool bisa=cur>=it["emas"];
+            return Container(decoration: BoxDecoration(color: Color(0xFFFFF8B0), borderRadius: BorderRadius.circular(16), border: Border.all(color: bisa? Colors.green: Colors.grey)),
+              child: Column(mainAxisAlignment: MainAxisAlignment.center, children:[
+                Text("Rp${it["rp"]}", style: TextStyle(fontWeight: FontWeight.w900, fontSize:18)),
+                Text("${it["emas"]} Emas", style: TextStyle(fontSize:10)),
+                SizedBox(height:8),
+                GestureDetector(onTap: bisa? ()=> prosesTarik(it): null, child: Container(padding: EdgeInsets.symmetric(horizontal:12,vertical:4), decoration: BoxDecoration(color: bisa? Color(0xFFFFC400): Colors.grey, borderRadius: BorderRadius.circular(12)), child: Text(it["limit"], style: TextStyle(fontSize:9, fontWeight: FontWeight.bold))))
+              ]),
+            );
+          }))),
+          // Tombol Tarik Semua
+          Container(padding: EdgeInsets.all(12), child: Column(children:[
+            GestureDetector(onTap: ()=> prosesTarik(list[0]), child: Container(width: double.infinity, padding: EdgeInsets.symmetric(vertical:14), decoration: BoxDecoration(color: Color(0xFFFFD000), borderRadius: BorderRadius.circular(24)), child: Center(child: Text("Tarik Semua", style: TextStyle(fontWeight: FontWeight.bold, fontSize:16))))),
+            SizedBox(height:4),
+            Text("Tarik jumlah ini: Rp${rpTotal.toStringAsFixed(0)}", style: TextStyle(color: Colors.white70, fontSize:10))
+          ]))
+        ])),
       ),
     );
   }
-
-  Widget chip(String t)=>Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)), child: Text(t, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)));
-
-  Widget bubble(Color c, double s){
-    return Container(width: s, height: s, decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [Colors.white, c, c.withOpacity(0.8)], center: const Alignment(-0.3,-0.4), radius: 0.9), boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 3, offset: Offset(1,2))], border: Border.all(color: Colors.white70, width: 1.5)),
-      child: Container(margin: EdgeInsets.all(s*0.18), decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withOpacity(0.6))));
-  }
 }
-
-class AimPaint extends CustomPainter {
-  final double x, ang; final bool shooting;
-  AimPaint(this.x,this.ang,this.shooting);
-  @override void paint(Canvas canvas, Size size){
-    if(shooting) return;
-    var p=Paint()..color=Colors.yellowAccent..style=PaintingStyle.fill;
-    double cx=size.width*x, cy=size.height*0.88;
-    for(int i=1;i<14;i++){ double px=cx+cos(ang)*i*18; double py=cy+sin(ang)*i*18; if(py<45) break; canvas.drawCircle(Offset(px,py), i%2==0?5:3, p); }
-  }
-  @override bool shouldRepaint(covariant CustomPainter old)=>true;
-}
-
-class GPos{ final int r,c; GPos(this.r,this.c); }
