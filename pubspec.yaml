@@ -1,16 +1,17 @@
-name: mountain_hunter
-description: Bubble DANA Cuan V2 - Bubble Terbang
+name: bubble_cuan
+description: Game Bubble Cuan 1 Klik 1 Coin
 publish_to: 'none'
-version: 2.0.0+2
+version: 3.5.0
+
 environment:
   sdk: '>=3.0.0 <4.0.0'
+
 dependencies:
   flutter:
     sdk: flutter
   shared_preferences: ^2.2.2
-  audioplayers: ^6.0.0
+  google_mobile_ads: ^4.0.0
+  http: ^1.1.0
+
 flutter:
   uses-material-design: true
-  assets:
-    - assets/
-    - assets/icon.png
