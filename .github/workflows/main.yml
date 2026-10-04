@@ -28,21 +28,25 @@ jobs:
           cp -r lib lib_backup || true
           cp pubspec.yaml pubspec_backup.yaml || true
           rm -rf android
-          flutter create . --project-name mountain_hunter --org com.rizaldi.bubblecuan
+          flutter create . --project-name bubble_dana_cuan --org com.rizaldi.bubblecuan
           rm -rf lib
           mv lib_backup lib
           mv pubspec_backup.yaml pubspec.yaml
           flutter pub get
-      - name: Fix AdMob Crash
+      - name: Fix Name & AdMob
         run: |
           python3 -c "
-          import pathlib
+          import re, pathlib
           p=pathlib.Path('android/app/src/main/AndroidManifest.xml')
-          s=p.read_text()
-          if 'com.google.android.gms.ads.APPLICATION_ID' not in s:
-              s=s.replace('<application', '<meta-data android:name=\"com.google.android.gms.ads.APPLICATION_ID\" android:value=\"ca-app-pub-3940256099942544~3347511713\"/>\n        <application')
-              p.write_text(s)
-          print('FIXED')
+          xml=p.read_text()
+          # 1. Fix Nama jadi Bubble DANA Cuan
+          xml=xml.replace('android:label=\"bubble_dana_cuan\"', 'android:label=\"Bubble DANA Cuan\"')
+          xml=xml.replace('android:label=\"mountain_hunter\"', 'android:label=\"Bubble DANA Cuan\"')
+          # 2. Fix AdMob di DALAM application
+          if 'com.google.android.gms.ads.APPLICATION_ID' not in xml:
+              xml=re.sub(r'(<application[^>]*>)', r'\1\n        <meta-data android:name=\"com.google.android.gms.ads.APPLICATION_ID\" android:value=\"ca-app-pub-3940256099942544~3347511713\"/>', xml, count=1)
+          p.write_text(xml)
+          print('FIXED NAME & ADMOB')
           "
       - name: Build APK
         run: flutter build apk --release
