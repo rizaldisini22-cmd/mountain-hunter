@@ -1,25 +1,30 @@
-name: build
-
-on:
-  push:
-    branches: [ main ]
-
+name: Build Bubble DANA Cuan
+on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup Bubble Icon
+        run: |
+          cp IMG-20261004-WA1114.jpg icon.png
+          mkdir -p assets
+          cp icon.png assets/icon.png
+          # pasang icon ke android
+          for d in android/app/src/main/res/mipmap-*; do cp icon.png $d/ic_launcher.png; cp icon.png $d/ic_launcher_round.png; done || true
+          ls -lh icon.png
+
       - uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
       - uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
-      - run: flutter create . --platforms=android
-      - run: sed -i 's/android:label="mountain_hunter"/android:label="Bubble DANA Cuan"/' android/app/src/main/AndroidManifest.xml
+          flutter-version: '3.22.0'
+      - run: flutter pub get
       - run: flutter build apk --release
       - uses: actions/upload-artifact@v4
         with:
-          name: apk
+          name: Bubble-DANA-Cuan-APK
           path: build/app/outputs/flutter-apk/app-release.apk
