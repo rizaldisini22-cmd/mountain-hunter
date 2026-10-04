@@ -1,13 +1,16 @@
 name: mountain_hunter
-description: Mountain Hunter - Game tap-tap koin gunung penghasil uang. Dibuat di Pebayuran.
+description: Bubble DANA Cuan V2 - Bubble Terbang
 publish_to: 'none'
-version: 1.0.0+1
+version: 2.0.0+2
 environment:
   sdk: '>=3.0.0 <4.0.0'
 dependencies:
   flutter:
     sdk: flutter
   shared_preferences: ^2.2.2
-  cupertino_icons: ^1.0.2
+  audioplayers: ^6.0.0
 flutter:
   uses-material-design: true
+  assets:
+    - assets/
+    - assets/icon.png
