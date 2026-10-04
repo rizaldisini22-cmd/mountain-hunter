@@ -1,5 +1,9 @@
 name: build
-on: [push]
+
+on:
+  push:
+    branches: [ main ]
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -11,11 +15,11 @@ jobs:
           java-version: '17'
       - uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          channel: 'stable'
       - run: flutter create . --platforms=android
-      - run: flutter pub get
+      - run: sed -i 's/android:label="mountain_hunter"/android:label="Bubble DANA Cuan"/' android/app/src/main/AndroidManifest.xml
       - run: flutter build apk --release
       - uses: actions/upload-artifact@v4
         with:
-          name: apk-mountain-hunter-bola-rapi
+          name: apk
           path: build/app/outputs/flutter-apk/app-release.apk
