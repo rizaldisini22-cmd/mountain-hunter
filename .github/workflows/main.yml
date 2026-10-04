@@ -1,28 +1,53 @@
 name: Build Bubble DANA Cuan
-on: [push]
+on:
+  push:
+    branches:
+      - main
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Fix Gradle & Setup Bubble Icon
+      
+      - name: Backup and prepare icon
         run: |
-          ls -lh
-          cp IMG-20261004-WA1114.jpg icon.png || true
-          cp *.jpg icon.png || true
-          mkdir -p assets
-          cp icon.png assets/icon.png || true
-          # backup file penting
+          ls -la
+          if [ -f "IMG-20261004-WA1114.jpg" ]; then cp IMG-20261004-WA1114.jpg icon.png; fi
+          ls -la *.png *.jpg || true
+          cp icon.png assets/icon.png || mkdir -p assets && cp icon.png assets/icon.png || true
           cp -r lib lib_backup || true
           cp pubspec.yaml pubspec_backup.yaml || true
-          # hapus android lama yg rusak
           rm -rf android
-          echo "fixing gradle..."
-
-      - uses: actions/setup-java@v4
+          
+      - name: Setup Java
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
-
-      - uses: subosito/flutter-action
+          
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.5'
+          channel: stable
+          
+      - name: Fix android project
+        run: |
+          flutter create -t app --platforms=android .
+          rm -rf lib
+          mv lib_backup lib || true
+          mv pubspec_backup.yaml pubspec.yaml || true
+          cp icon.png assets/icon.png || true
+          for d in android/app/src/main/res/mipmap-*; do cp icon.png $d/ic_launcher.png; cp icon.png $d/ic_launcher_round.png; done
+          
+      - name: Build APK
+        run: |
+          flutter clean
+          flutter pub get
+          flutter build apk --release
+          
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bubble-DANA-Cuan-APK
+          path: build/app/outputs/flutter-apk/app-release.apk
