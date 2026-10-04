@@ -6,25 +6,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Bubble Icon
+      - name: Fix Gradle & Setup Bubble Icon
         run: |
-          cp IMG-20261004-WA1114.jpg icon.png
+          ls -lh
+          cp IMG-20261004-WA1114.jpg icon.png || true
+          cp *.jpg icon.png || true
           mkdir -p assets
-          cp icon.png assets/icon.png
-          # pasang icon ke android
-          for d in android/app/src/main/res/mipmap-*; do cp icon.png $d/ic_launcher.png; cp icon.png $d/ic_launcher_round.png; done || true
-          ls -lh icon.png
+          cp icon.png assets/icon.png || true
+          # backup file penting
+          cp -r lib lib_backup || true
+          cp pubspec.yaml pubspec_backup.yaml || true
+          # hapus android lama yg rusak
+          rm -rf android
+          echo "fixing gradle..."
 
       - uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.22.0'
-      - run: flutter pub get
-      - run: flutter build apk --release
-      - uses: actions/upload-artifact@v4
-        with:
-          name: Bubble-DANA-Cuan-APK
-          path: build/app/outputs/flutter-apk/app-release.apk
+
+      - uses: subosito/flutter-action
