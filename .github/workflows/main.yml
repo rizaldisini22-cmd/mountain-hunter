@@ -9,12 +9,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Backup and prepare icon
+      - name: Backup
         run: |
-          ls -la
-          if [ -f "IMG-20261004-WA1114.jpg" ]; then cp IMG-20261004-WA1114.jpg icon.png; fi
-          ls -la *.png *.jpg || true
-          cp icon.png assets/icon.png || mkdir -p assets && cp icon.png assets/icon.png || true
+          cp IMG-20261004-WA1114.jpg icon.png || true
           cp -r lib lib_backup || true
           cp pubspec.yaml pubspec_backup.yaml || true
           rm -rf android
@@ -33,12 +30,14 @@ jobs:
           
       - name: Fix android project
         run: |
-          flutter create -t app --platforms=android .
+          flutter create --project-name mountain_hunter -t app --platforms=android .
           rm -rf lib
-          mv lib_backup lib || true
-          mv pubspec_backup.yaml pubspec.yaml || true
+          mv lib_backup lib
+          mv pubspec_backup.yaml pubspec.yaml
+          mkdir -p assets
           cp icon.png assets/icon.png || true
           for d in android/app/src/main/res/mipmap-*; do cp icon.png $d/ic_launcher.png; cp icon.png $d/ic_launcher_round.png; done
+          echo "Icon bubble terpasang!"
           
       - name: Build APK
         run: |
