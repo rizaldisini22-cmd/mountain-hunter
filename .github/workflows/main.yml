@@ -11,12 +11,9 @@ jobs:
       - name: Convert Icon
         run: |
           pip install pillow
-          python3 -c "from PIL import Image; import glob; s=glob.glob('*.jpg')[0]; Image.open(s).convert('RGBA').resize((1024,1024)).save('icon.png','PNG')"
+          python3 -c "from PIL import Image; import os; im=Image.open('icon.png') if os.path.exists('icon.png') else None; print('icon ok' if im else 'no icon')"
           mkdir -p assets
           cp icon.png assets/icon.png || true
-          cp -r lib lib_backup || true
-          cp pubspec.yaml pubspec_backup.yaml || true
-          rm -rf android
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -25,23 +22,26 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.5'
-          channel: stable
-      - name: Fix android
+          flutter-version: '3.22.0'
+      - name: Recreate Project
         run: |
-          flutter create --project-name mountain_hunter .
+          cp -r lib lib_backup || true
+          cp pubspec.yaml pubspec_backup.yaml || true
+          rm -rf android
+          flutter create . --project-name mountain_hunter --org com.rizaldi.bubblecuan
           rm -rf lib
           mv lib_backup lib
           mv pubspec_backup.yaml pubspec.yaml
-          cp icon.png assets/icon.png || true
-          for d in android/app/src/main/res/mipmap-*; do cp icon.png $d/ic_launcher.png; cp icon.png $d/ic_launcher_round.png; done
-      - name: Build APK
-        run: |
-          flutter clean
           flutter pub get
-          flutter build apk --release
+      - name: Fix AdMob Crash
+        run: |
+          MANIFEST=android/app/src/main/AndroidManifest.xml
+          sed -i '/<application/a \        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-3940256099942544~3347511713"\/>' $MANIFEST
+          cat $MANIFEST
+      - name: Build APK
+        run: flutter build apk --release
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Bubble-DANA-Cuan-APK
+          name: app-release
           path: build/app/outputs/flutter-apk/app-release.apk
