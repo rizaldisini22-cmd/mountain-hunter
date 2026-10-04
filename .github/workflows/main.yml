@@ -35,9 +35,15 @@ jobs:
           flutter pub get
       - name: Fix AdMob Crash
         run: |
-          MANIFEST=android/app/src/main/AndroidManifest.xml
-          sed -i '/<application/a \        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-3940256099942544~3347511713"\/>' $MANIFEST
-          cat $MANIFEST
+          python3 -c "
+          import pathlib
+          p=pathlib.Path('android/app/src/main/AndroidManifest.xml')
+          s=p.read_text()
+          if 'com.google.android.gms.ads.APPLICATION_ID' not in s:
+              s=s.replace('<application', '<meta-data android:name=\"com.google.android.gms.ads.APPLICATION_ID\" android:value=\"ca-app-pub-3940256099942544~3347511713\"/>\n        <application')
+              p.write_text(s)
+          print('FIXED')
+          "
       - name: Build APK
         run: flutter build apk --release
       - name: Upload APK
