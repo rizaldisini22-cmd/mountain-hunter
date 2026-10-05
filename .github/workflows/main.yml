@@ -21,9 +21,8 @@ jobs:
           p = pathlib.Path('android/app/src/main/AndroidManifest.xml')
           txt = p.read_text()
           if 'APPLICATION_ID' not in txt:
-              txt = txt.replace('</application>', ' <meta-data android:name=\"com.google.android.gms.ads.APPLICATION_ID\" android:value=\"ca-app-pub-3940256099942544~3347511713\"/>\n </application>')
+              txt = txt.replace('</application>', '        <meta-data android:name=\"com.google.android.gms.ads.APPLICATION_ID\" android:value=\"ca-app-pub-3940256099942544~3347511713\"/>\n        </application>')
               p.write_text(txt)
-              print('AdMob injected')
           "
       - name: Install dependencies
         run: flutter pub get
