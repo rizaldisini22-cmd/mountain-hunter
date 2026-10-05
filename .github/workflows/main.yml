@@ -12,6 +12,8 @@ jobs:
           flutter-version: '3.22.0'
       - name: Install dependencies
         run: flutter pub get
+      - name: Fix android folder
+        run: flutter create . --platforms=android
       - name: Generate launcher icons
         run: flutter pub run flutter_launcher_icons
       - name: Build APK
