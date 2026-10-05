@@ -13,7 +13,7 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
       - name: Fix android folder
-        run: flutter create . --platforms=android
+        run: flutter create . --platforms=android --project-name bubble_cuan
       - name: Generate launcher icons
         run: flutter pub run flutter_launcher_icons
       - name: Build APK
