@@ -1,34 +1,57 @@
-name: Build Gold Miner APK
+name: Build TAP DANA APK
 on: [push]
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
+
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.22.0'
+          channel: 'stable'
 
-      - name: Create android folder only if missing
+      - name: Fix android folder
         run: |
-          if [ ! -d "android" ]; then
-            flutter create --platforms=android --org com.goldminer.cuan --project-name gold_miner_cuan .
-          else
-            echo "android folder exists, skip"
+          if [! -d "android" ]; then
+            flutter create --platforms=android --org com.tapdana.cuan.
           fi
 
-      - name: Fix kotlin and AdMob
+      - name: Update Icon from icon.png
         run: |
-          sed -i 's/id "org.jetbrains.kotlin.android" version ".*"/id "org.jetbrains.kotlin.android" version "1.9.22"/' android/settings.gradle || true
-          grep -q APPLICATION_ID android/app/src/main/AndroidManifest.xml || sed -i '/<\/application>/i \ <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-3940256099942544~3347511713"\/>' android/app/src/main/AndroidManifest.xml
+          if [ -f "icon.png" ]; then
+            echo "Icon found, updating..."
+            for dir in android/app/src/main/res/mipmap-*; do
+              if [ -d "$dir" ]; then
+                cp icon.png "$dir/ic_launcher.png"
+                echo "Updated $dir"
+              fi
+            done
+          else
+            echo "No icon.png, using default"
+          fi
+
+      - name: Update App Name
+        run: |
+          sed -i 's/android:label="[^"]*"/android:label="TAP DANA CUAN"/' android/app/src/main/AndroidManifest.xml
+
+      - name: Add AdMob ID
+        run: |
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          if! grep -q "APPLICATION_ID" "$MANIFEST"; then
+            sed -i '/<application/a \ <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-3940256099942544~3347511713"\/>' "$MANIFEST"
+          fi
 
       - run: flutter pub get
       - run: flutter build apk --release
+
       - uses: actions/upload-artifact@v4
         with:
-          name: Gold-Miner-Cuan-APK
+          name: TAP-DANA-CUAN-APK
           path: build/app/outputs/flutter-apk/app-release.apk
