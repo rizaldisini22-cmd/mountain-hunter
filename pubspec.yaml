@@ -1,31 +1,31 @@
-name: Build APK
-on:
-  push:
-    branches: [ main ]
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.22.0'
-      - name: Clean old android
-        run: rm -rf android
-      - name: Create android fresh
-        run: flutter create . --platforms=android --project-name bubble_cuan --org com.bubblecuan.app
-      - name: Inject AdMob ID
-        run: |
-          sed -i '/<application/a \        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-3940256099942544~3347511713"\/>' android/app/src/main/AndroidManifest.xml
-          cat android/app/src/main/AndroidManifest.xml
-      - name: Install dependencies
-        run: flutter pub get
-      - name: Generate icons
-        run: flutter pub run flutter_launcher_icons
-      - name: Build APK
-        run: flutter build apk --release
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-release
-          path: build/app/outputs/flutter-apk/app-release.apk
+name: bubble_cuan
+description: Bubble Cuan - Bubble Rp Game
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '^3.4.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  google_mobile_ads: ^4.0.0
+  google_fonts: ^6.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_launcher_icons: ^0.14.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: false
+  image_path: "assets/images/icon.png"
+  min_sdk_android: 21
+  web:
+    generate: false
