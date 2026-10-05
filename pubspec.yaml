@@ -1,30 +1,31 @@
-name: bubble_cuan
-description: Game Bubble Cuan 1 Klik 1 Coin
-publish_to: 'none'
-version: 3.5.0
-
-environment:
-  sdk: "^3.4.0"
-
-dependencies:
-  flutter:
-    sdk: flutter
-  shared_preferences: ^2.2.2
-  google_mobile_ads: ^4.0.0
-  http: ^1.1.0
-  cupertino_icons: ^1.0.5
-
-dev_dependencies:
-  flutter_test:
-    sdk: flutter
-  flutter_lints: ^2.0.0
-  flutter_launcher_icons: ^0.13.1
-
-flutter:
-  uses-material-design: true
-
-flutter_launcher_icons:
-  android: "launcher_icon"
-  ios: false
-  image_path: "icon.png"
-  min_sdk_android: 21
+name: Build APK
+on:
+  push:
+    branches: [ main ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+      - name: Clean old android
+        run: rm -rf android
+      - name: Create android fresh
+        run: flutter create . --platforms=android --project-name bubble_cuan --org com.bubblecuan.app
+      - name: Inject AdMob ID
+        run: |
+          sed -i '/<application/a \        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-3940256099942544~3347511713"\/>' android/app/src/main/AndroidManifest.xml
+          cat android/app/src/main/AndroidManifest.xml
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Generate icons
+        run: flutter pub run flutter_launcher_icons
+      - name: Build APK
+        run: flutter build apk --release
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: build/app/outputs/flutter-apk/app-release.apk
