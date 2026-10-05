@@ -13,7 +13,7 @@ jobs:
       - name: Clean old android
         run: rm -rf android
       - name: Create android fresh
-        run: flutter create. --platforms=android --project-name bubble_cuan --org com.bubblecuan.app
+        run: flutter create . --platforms=android --project-name bubble_cuan --org com.bubblecuan.app
       - name: Inject AdMob ID
         run: |
           python3 -c "
