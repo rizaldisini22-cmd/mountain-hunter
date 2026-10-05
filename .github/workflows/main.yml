@@ -10,16 +10,10 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.22.0'
-      - name: Fix pubspec if broken
-        run: |
-          if ! grep -q "environment:" pubspec.yaml; then
-            echo "environment:" >> pubspec.yaml
-            echo "  sdk: '^3.4.0'" >> pubspec.yaml
-          fi
       - name: Clean old android
         run: rm -rf android
       - name: Create android fresh
-        run: flutter create . --platforms=android --project-name bubble_cuan --org com.bubblecuan.app
+        run: flutter create. --platforms=android --project-name bubble_cuan --org com.bubblecuan.app
       - name: Inject AdMob ID
         run: |
           python3 -c "
@@ -27,11 +21,9 @@ jobs:
           p = pathlib.Path('android/app/src/main/AndroidManifest.xml')
           txt = p.read_text()
           if 'APPLICATION_ID' not in txt:
-              txt = txt.replace('</application>', '        <meta-data android:name=\"com.google.android.gms.ads.APPLICATION_ID\" android:value=\"ca-app-pub-3940256099942544~3347511713\"/>\n        </application>')
+              txt = txt.replace('</application>', ' <meta-data android:name=\"com.google.android.gms.ads.APPLICATION_ID\" android:value=\"ca-app-pub-3940256099942544~3347511713\"/>\n </application>')
               p.write_text(txt)
               print('AdMob injected')
-          else:
-              print('Already injected')
           "
       - name: Install dependencies
         run: flutter pub get
