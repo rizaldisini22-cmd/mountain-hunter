@@ -1,12 +1,12 @@
-name: mountain_hunter
-description: Game tap-tap koin gunung penghasil uang AdMob.
-version: 1.0.0+1
+name: tap_dana_cuan
+publish_to: 'none'
 environment:
   sdk: '>=3.0.0 <4.0.0'
 dependencies:
   flutter:
     sdk: flutter
-  google_mobile_ads: ^5.1.0
   shared_preferences: ^2.2.2
+  google_mobile_ads: ^5.1.0
+
 flutter:
   uses-material-design: true
