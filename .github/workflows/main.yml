@@ -10,11 +10,13 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.22.0'
+      - name: Clean old android
+        run: rm -rf android
+      - name: Create android fresh
+        run: flutter create . --platforms=android --project-name bubble_cuan --org com.bubblecuan.app
       - name: Install dependencies
         run: flutter pub get
-      - name: Fix android folder
-        run: flutter create . --platforms=android --project-name bubble_cuan
-      - name: Generate launcher icons
+      - name: Generate icons
         run: flutter pub run flutter_launcher_icons
       - name: Build APK
         run: flutter build apk --release
