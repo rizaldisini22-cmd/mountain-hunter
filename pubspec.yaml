@@ -1,17 +1,30 @@
-name: bubble_cuan
-description: Game Bubble Cuan 1 Klik 1 Coin
-publish_to: 'none'
-version: 3.5.0
+name: Build APK
 
-environment:
-  sdk: '>=3.0.0 <4.0.0'
+on:
+  push:
+    branches: [ main ]
 
-dependencies:
-  flutter:
-    sdk: flutter
-  shared_preferences: ^2.2.2
-  google_mobile_ads: ^4.0.0
-  http: ^1.1.0
-
-flutter:
-  uses-material-design: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+          
+      - name: Install dependencies
+        run: flutter pub get
+        
+      - name: Generate launcher icons
+        run: flutter pub run flutter_launcher_icons
+        
+      - name: Build APK
+        run: flutter build apk --release
+        
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: build/app/outputs/flutter-apk/app-release.apk
