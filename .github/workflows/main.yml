@@ -10,6 +10,13 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.22.0'
+      - name: Fix pubspec if broken
+        run: |
+          if ! grep -q "environment:" pubspec.yaml; then
+            echo "environment:" >> pubspec.yaml
+            echo "  sdk: '^3.4.0'" >> pubspec.yaml
+          fi
+          cat pubspec.yaml
       - name: Clean old android
         run: rm -rf android
       - name: Create android fresh
@@ -19,8 +26,6 @@ jobs:
           sed -i '/<application/a \        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-3940256099942544~3347511713"\/>' android/app/src/main/AndroidManifest.xml
       - name: Install dependencies
         run: flutter pub get
-      - name: Generate icons
-        run: flutter pub run flutter_launcher_icons
       - name: Build APK
         run: flutter build apk --release
       - name: Upload APK
