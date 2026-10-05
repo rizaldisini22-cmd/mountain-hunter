@@ -1,4 +1,4 @@
-name: Build TAP DANA APK
+name: Build TAP DANA CUAN
 on: [push]
 
 jobs:
@@ -19,33 +19,27 @@ jobs:
 
       - name: Fix android folder
         run: |
-          if [! -d "android" ]; then
-            flutter create --platforms=android --org com.tapdana.cuan.
+          if [ ! -d "android" ]; then
+            flutter create --platforms=android .
           fi
 
-      - name: Update Icon from icon.png
+      - name: Update Icon
         run: |
           if [ -f "icon.png" ]; then
-            echo "Icon found, updating..."
             for dir in android/app/src/main/res/mipmap-*; do
-              if [ -d "$dir" ]; then
-                cp icon.png "$dir/ic_launcher.png"
-                echo "Updated $dir"
-              fi
+              cp icon.png "$dir/ic_launcher.png" || true
             done
-          else
-            echo "No icon.png, using default"
           fi
 
       - name: Update App Name
         run: |
-          sed -i 's/android:label="[^"]*"/android:label="TAP DANA CUAN"/' android/app/src/main/AndroidManifest.xml
+          sed -i 's/android:label="[^"]*"/android:label="TAP DANA CUAN"/' android/app/src/main/AndroidManifest.xml || true
 
-      - name: Add AdMob ID
+      - name: Add AdMob
         run: |
-          MANIFEST="android/app/src/main/AndroidManifest.xml"
-          if! grep -q "APPLICATION_ID" "$MANIFEST"; then
-            sed -i '/<application/a \ <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-3940256099942544~3347511713"\/>' "$MANIFEST"
+          FILE="android/app/src/main/AndroidManifest.xml"
+          if ! grep -q "APPLICATION_ID" "$FILE"; then
+            sed -i '/<application/a \ <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-3940256099942544~3347511713"\/>' "$FILE"
           fi
 
       - run: flutter pub get
@@ -53,5 +47,5 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: TAP-DANA-CUAN-APK
+          name: TAP-DANA-CUAN
           path: build/app/outputs/flutter-apk/app-release.apk
