@@ -14,6 +14,9 @@ jobs:
         run: rm -rf android
       - name: Create android fresh
         run: flutter create . --platforms=android --project-name bubble_cuan --org com.bubblecuan.app
+      - name: Inject AdMob ID
+        run: |
+          sed -i '/<application/a \        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-3940256099942544~3347511713"\/>' android/app/src/main/AndroidManifest.xml
       - name: Install dependencies
         run: flutter pub get
       - name: Generate icons
