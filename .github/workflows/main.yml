@@ -1,56 +1,19 @@
-name: Build APK
-on:
-  push:
-    branches: [ main ]
+name: Build Gold Miner APK
+on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: {distribution: 'zulu', java-version: '17'}
       - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.22.0'
-      - name: Clean old android
-        run: rm -rf android
-      - name: Create android fresh
-        run: flutter create . --platforms=android --project-name bubble_cuan --org com.bubblecuan.app
-      - name: Fix Kotlin Version for AdMob
-        run: |
-          python3 -c "
-          import pathlib, re
-          # Fix android/settings.gradle
-          p = pathlib.Path('android/settings.gradle')
-          if p.exists():
-              txt = p.read_text()
-              txt = re.sub(r\"id \\\"org.jetbrains.kotlin.android\\\" version \\\"[0-9.]+\\\"\", 'id \"org.jetbrains.kotlin.android\" version \"1.9.22\"', txt)
-              p.write_text(txt)
-              print('settings.gradle fixed')
-          # Fix android/build.gradle
-          p2 = pathlib.Path('android/build.gradle')
-          if p2.exists():
-              txt2 = p2.read_text()
-              txt2 = txt2.replace(\"'1.7.10'\", \"'1.9.22'\").replace('\"1.7.10\"', '\"1.9.22\"')
-              txt2 = re.sub(r\"ext.kotlin_version = '.*?'\", \"ext.kotlin_version = '1.9.22'\", txt2)
-              txt2 = re.sub(r'ext.kotlin_version = \".*?\"', 'ext.kotlin_version = \"1.9.22\"', txt2)
-              p2.write_text(txt2)
-              print('build.gradle fixed')
-          "
-      - name: Inject AdMob ID
-        run: |
-          python3 -c "
-          import pathlib
-          p = pathlib.Path('android/app/src/main/AndroidManifest.xml')
-          txt = p.read_text()
-          if 'APPLICATION_ID' not in txt:
-              txt = txt.replace('</application>', '        <meta-data android:name=\"com.google.android.gms.ads.APPLICATION_ID\" android:value=\"ca-app-pub-3940256099942544~3347511713\"/>\n        </application>')
-              p.write_text(txt)
-          "
-      - name: Install dependencies
-        run: flutter pub get
-      - name: Build APK
-        run: flutter build apk --release
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-release
-          path: build/app/outputs/flutter-apk/app-release.apk
+        with: {flutter-version: '3.22.0'}
+      - run: flutter create. --platforms=android --org com.goldminer.cuan --project-name gold_miner_cuan --no-pub
+      - run: |
+          sed -i 's/id "org.jetbrains.kotlin.android" version ".*"/id "org.jetbrains.kotlin.android" version "1.9.22"/' android/settings.gradle
+          grep -q APPLICATION_ID android/app/src/main/AndroidManifest.xml || sed -i '/<\/application>/i \ <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-3940256099942544~3347511713"\/>' android/app/src/main/AndroidManifest.xml
+      - run: flutter pub get
+      - run: flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with: {name: Gold-Miner-Cuan-APK, path: build/app/outputs/flutter-apk/app-release.apk}
