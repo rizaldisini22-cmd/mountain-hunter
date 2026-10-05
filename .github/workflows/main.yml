@@ -9,7 +9,7 @@ jobs:
         with: {distribution: 'zulu', java-version: '17'}
       - uses: subosito/flutter-action@v2
         with: {flutter-version: '3.22.0'}
-      - run: flutter create. --platforms=android --org com.goldminer.cuan --project-name gold_miner_cuan --no-pub
+      - run: flutter create --platforms=android --org com.goldminer.cuan --project-name gold_miner_cuan --no-pub
       - run: |
           sed -i 's/id "org.jetbrains.kotlin.android" version ".*"/id "org.jetbrains.kotlin.android" version "1.9.22"/' android/settings.gradle
           grep -q APPLICATION_ID android/app/src/main/AndroidManifest.xml || sed -i '/<\/application>/i \ <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-3940256099942544~3347511713"\/>' android/app/src/main/AndroidManifest.xml
