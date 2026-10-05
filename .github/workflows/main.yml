@@ -1,53 +1,19 @@
-name: Build Bubble DANA Cuan
+name: Build APK
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Convert Icon
-        run: |
-          pip install pillow
-          python3 -c "from PIL import Image; import os; im=Image.open('icon.png') if os.path.exists('icon.png') else None; print('icon ok' if im else 'no icon')"
-          mkdir -p assets
-          cp icon.png assets/icon.png || true
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.22.0'
-      - name: Recreate Project
-        run: |
-          cp -r lib lib_backup || true
-          cp pubspec.yaml pubspec_backup.yaml || true
-          rm -rf android
-          flutter create . --project-name bubble_dana_cuan --org com.rizaldi.bubblecuan
-          rm -rf lib
-          mv lib_backup lib
-          mv pubspec_backup.yaml pubspec.yaml
-          flutter pub get
-      - name: Fix Name & AdMob
-        run: |
-          python3 -c "
-          import re, pathlib
-          p=pathlib.Path('android/app/src/main/AndroidManifest.xml')
-          xml=p.read_text()
-          # 1. Fix Nama jadi Bubble DANA Cuan
-          xml=xml.replace('android:label=\"bubble_dana_cuan\"', 'android:label=\"Bubble DANA Cuan\"')
-          xml=xml.replace('android:label=\"mountain_hunter\"', 'android:label=\"Bubble DANA Cuan\"')
-          # 2. Fix AdMob di DALAM application
-          if 'com.google.android.gms.ads.APPLICATION_ID' not in xml:
-              xml=re.sub(r'(<application[^>]*>)', r'\1\n        <meta-data android:name=\"com.google.android.gms.ads.APPLICATION_ID\" android:value=\"ca-app-pub-3940256099942544~3347511713\"/>', xml, count=1)
-          p.write_text(xml)
-          print('FIXED NAME & ADMOB')
-          "
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Generate launcher icons
+        run: flutter pub run flutter_launcher_icons
       - name: Build APK
         run: flutter build apk --release
       - name: Upload APK
