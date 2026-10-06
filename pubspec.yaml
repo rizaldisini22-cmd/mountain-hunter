@@ -1,5 +1,5 @@
 name: mountain_hunter
-description: TAP DANA CUAN BEST AdMob
+description: TAP DANA CUAN
 publish_to: 'none'
 version: 1.0.0+1
 environment:
@@ -8,6 +8,5 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.2
-  google_mobile_ads: ^4.0.0
 flutter:
   uses-material-design: true
