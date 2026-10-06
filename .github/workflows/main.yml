@@ -17,13 +17,6 @@ jobs:
         run: sed -i 's/mountain-hunter/mountain_hunter/g' pubspec.yaml || true
       - name: Create Android
         run: flutter create --platforms=android --project-name mountain_hunter . || true
-      - name: Icon
-        run: |
-          if [ -f "icon.png" ]; then
-            for dir in android/app/src/main/res/mipmap-*; do
-              cp icon.png $dir/ic_launcher.png || true
-            done
-          fi
       - name: Name
         run: sed -i 's/label="[^"]*"/label="TAP DANA CUAN"/' android/app/src/main/AndroidManifest.xml || true
       - run: flutter pub get
