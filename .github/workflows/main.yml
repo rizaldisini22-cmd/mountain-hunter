@@ -1,4 +1,4 @@
-name: Build TAP DANA CUAN
+name: Build TAP DANA CUAN ADMOB
 on: [push]
 jobs:
   build:
@@ -13,15 +13,17 @@ jobs:
         with:
           flutter-version: '3.22.0'
           channel: 'stable'
-      - name: Fix
-        run: sed -i 's/mountain-hunter/mountain_hunter/g' pubspec.yaml || true
-      - name: Create Android
-        run: flutter create --platforms=android --project-name mountain_hunter . || true
-      - name: Name
-        run: sed -i 's/label="[^"]*"/label="TAP DANA CUAN"/' android/app/src/main/AndroidManifest.xml || true
+      - name: Rebuild Clean Android
+        run: |
+          rm -rf android
+          flutter create --platforms=android --project-name mountain_hunter .
+      - name: Setup AdMob ID
+        run: |
+          sed -i 's/label="[^"]*"/label="TAP DANA CUAN"/' android/app/src/main/AndroidManifest.xml
+          sed -i '/<application/a \ <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-3940256099942544~3347511713"/>' android/app/src/main/AndroidManifest.xml
       - run: flutter pub get
       - run: flutter build apk --release
       - uses: actions/upload-artifact@v4
         with:
-          name: TAP-DANA-CUAN
+          name: TAP-DANA-CUAN-ADMOB
           path: build/app/outputs/flutter-apk/app-release.apk
