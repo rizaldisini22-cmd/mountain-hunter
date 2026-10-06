@@ -1,14 +1,6 @@
-import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
-
-void main() {
-  WidgetsFlutterBinding.ensureInitialized();
-  MobileAds.instance.initialize();
-  runApp(const TapDanaCuanApp());
-}
-
+void main() => runApp(const TapDanaCuanApp());
 class TapDanaCuanApp extends StatelessWidget {
   const TapDanaCuanApp({super.key});
   @override
@@ -16,131 +8,122 @@ class TapDanaCuanApp extends StatelessWidget {
     return MaterialApp(debugShowCheckedModeBanner: false, title: 'TAP DANA CUAN', home: const GameScreen());
   }
 }
-
 class Bubble {
   double x, y, speed; Color color; double size;
   Bubble({required this.x, required this.y, required this.speed, required this.color, this.size=60});
 }
-
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
   @override
   State<GameScreen> createState() => _GameScreenState();
 }
-
 class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateMixin {
-  int coin = 486; int rupiah = 486; int misi = 6; int timerSec = 0;
-  Timer? gameTimer, spawnTimer;
+  int coin = 486; int rupiah = 486;
   List<Bubble> bubbles = [];
   final Random rnd = Random();
   late AnimationController _controller;
   List<Color> colors = [Color(0xFFB983FF), Color(0xFFE85A5A), Color(0xFF6BCB77), Color(0xFFFFC93C), Color(0xFF4D96FF), Color(0xFFFFA500)];
-
-  RewardedAd? _rewardedAd;
-  bool _isAdReady = false;
-  // ID TEST - GANTI DENGAN ID ASLI KAKAK NANTI
-  final String adUnitId = 'ca-app-pub-3940256099942544/5224354917'; // Test Rewarded
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(vsync: this, duration: Duration(milliseconds: 16))..repeat();
     _controller.addListener(_update);
-    _loadAd();
-    _startGame();
-  }
-
-  void _loadAd(){
-    RewardedAd.load(
-      adUnitId: adUnitId,
-      request: AdRequest(),
-      rewardedAdLoadCallback: RewardedAdLoadCallback(
-        onAdLoaded: (ad){ setState((){ _rewardedAd = ad; _isAdReady = true; }); },
-        onAdFailedToLoad: (e){ print('Ad failed $e'); _isAdReady=false; Future.delayed(Duration(seconds: 3), _loadAd); }
-      )
-    );
-  }
-
-  void _startGame() {
-    timerSec = 0; bubbles.clear();
-    for(int i=0;i<12;i++) _spawnBubble();
-    gameTimer?.cancel();
-    gameTimer = Timer.periodic(Duration(seconds: 1), (t){ setState(()=> timerSec++); if(timerSec >= 15) _finishRound(); });
-    spawnTimer?.cancel();
-    spawnTimer = Timer.periodic(Duration(milliseconds: 800), (_)=> _spawnBubble());
+    for(int i=0;i<15;i++) _spawnBubble();
   }
   void _spawnBubble(){
-    if(bubbles.length>18) return;
-    setState((){ bubbles.add(Bubble(x: rnd.nextDouble()*0.85+0.02, y: 1.1+rnd.nextDouble()*0.3, speed: 0.003+rnd.nextDouble()*0.006, color: colors[rnd.nextInt(colors.length)], size: 55+rnd.nextDouble()*15)); });
+    if(bubbles.length>22) return;
+    setState((){
+      bubbles.add(Bubble(x: rnd.nextDouble()*0.85+0.02, y: 1.1+rnd.nextDouble()*0.5, speed: 0.003+rnd.nextDouble()*0.007, color: colors[rnd.nextInt(colors.length)], size: 52+rnd.nextDouble()*18));
+    });
   }
-  void _update(){ setState((){ for(var b in bubbles) b.y-=b.speed; bubbles.removeWhere((b)=> b.y < -0.2); }); }
-  void _tapBubble(int i){ setState((){ bubbles.removeAt(i); coin+=1; rupiah+=1; }); _spawnBubble(); }
+  void _update(){
+    if(!mounted) return;
+    setState((){
+      for(var b in bubbles) b.y -= b.speed;
+      bubbles.removeWhere((b)=> b.y < -0.2);
+      if(bubbles.length < 12) _spawnBubble();
+    });
+  }
+  void _tapBubble(int index){
+    // Simpan bubble yang di tap
+    Bubble tapped = bubbles[index];
+    setState(()=> bubbles.removeAt(index));
+    _showAdReward();
+  }
 
-  void _finishRound(){
-    gameTimer?.cancel(); spawnTimer?.cancel();
-    int reward = 30+rnd.nextInt(21); // 30-50
+  void _showAdReward(){
+    int bonus = 30 + rnd.nextInt(21); // 30-50
     showDialog(context: context, barrierDismissible: false, builder: (_)=> AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: Text('WAKTU HABIS!', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
       content: Column(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.play_circle_fill, size: 80, color: Colors.orange),
+        Container(width: 80, height: 80, decoration: BoxDecoration(color: Colors.orange[100], shape: BoxShape.circle), child: Icon(Icons.play_circle_fill, size: 60, color: Colors.orange)),
+        SizedBox(height: 15),
+        Text('IKLAN SELESAI!', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        SizedBox(height: 8),
+        Text('Tap = 1 Koin', style: TextStyle(fontSize: 14)),
+        Text('Bonus Iklan = $bonus Koin', style: TextStyle(fontSize: 14, color: Colors.green, fontWeight: FontWeight.bold)),
         SizedBox(height: 10),
-        Text(_isAdReady? 'Tonton iklan asli dapat bonus' : 'Loading iklan...', textAlign: TextAlign.center),
-        Text('+$reward KOIN', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.green)),
+        Container(padding: EdgeInsets.all(10), decoration: BoxDecoration(color: Colors.green[50], borderRadius: BorderRadius.circular(10)), child: Text('+${1+bonus} KOIN', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.green))),
       ]),
       actions: [SizedBox(width: double.infinity, child: ElevatedButton(
-        style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+        style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, padding: EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
         onPressed: (){
+          setState((){
+            coin += 1 + bonus;
+            rupiah += 1 + bonus;
+          });
           Navigator.pop(context);
-          if(_isAdReady && _rewardedAd!= null){
-            _rewardedAd!.fullScreenContentCallback = FullScreenContentCallback(
-              onAdDismissedFullScreenContent: (ad){ ad.dispose(); _loadAd(); _claimReward(reward); },
-              onAdFailedToShowFullScreenContent: (ad, err){ ad.dispose(); _loadAd(); _claimReward(reward); },
-            );
-            _rewardedAd!.show(onUserEarnedReward: (ad, rewardItem){});
-          } else {
-            _claimReward(reward);
-          }
+          _spawnBubble();
         },
-        child: Text(_isAdReady? 'TONTON IKLAN ASLI +$reward' : 'CLAIM +$reward KOIN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        child: Text('AMBIL ${1+bonus} KOIN & LANJUT TAP!', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ))],
     ));
   }
 
-  void _claimReward(int reward){
-    setState((){ coin+=reward; rupiah+=reward; misi+=1; });
-    _startGame();
-  }
-
-  void _showTukarSaldo(){
+  void _showTukar(){
     showModalBottomSheet(context: context, shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))), builder: (_){
       return Padding(padding: EdgeInsets.all(20), child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Text('TUKAR SALDO DANA', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-        Text('Saldo: Rp $rupiah ($coin Koin)'),
-        ListTile(title: Text('Rp 100'), subtitle: Text('100 koin'), trailing: ElevatedButton(onPressed: coin>=100?(){setState((){coin-=100; rupiah-=100;}); Navigator.pop(context); ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Berhasil tarik Rp100 ke DANA (Simulasi)')));} : null, child: Text('Tarik'))),
-        ListTile(title: Text('Rp 500'), subtitle: Text('500 koin'), trailing: ElevatedButton(onPressed: coin>=500?(){setState((){coin-=500; rupiah-=500;}); Navigator.pop(context);} : null, child: Text('Tarik'))),
-        ListTile(title: Text('Rp 1.000'), subtitle: Text('1000 koin'), trailing: ElevatedButton(onPressed: coin>=1000?(){setState((){coin-=1000; rupiah-=1000;}); Navigator.pop(context);} : null, child: Text('Tarik'))),
-        Text('*Ganti AdMob ID test dengan ID asli biar dapat uang beneran', style: TextStyle(fontSize: 11, color: Colors.grey)),
+        Text('TUKAR SALDO DANA', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        Text('Saldo: Rp $rupiah ($coin Koin)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+        SizedBox(height: 10),
+        _tile('Rp 100', 100), _tile('Rp 500', 500), _tile('Rp 1.000', 1000), _tile('Rp 5.000', 5000),
+        Text('*Simulasi hiburan - Tiap tap ada iklan', style: TextStyle(fontSize: 10, color: Colors.grey)),
       ]));
     });
   }
-  String _formatTimer(int s)=> '${(s~/60).toString().padLeft(2,'0')}:${(s%60).toString().padLeft(2,'0')}';
+  Widget _tile(String label, int need){
+    bool can = coin >= need;
+    return Card(child: ListTile(
+      title: Text(label, style: TextStyle(fontWeight: FontWeight.bold)), subtitle: Text('$need koin'),
+      trailing: ElevatedButton(onPressed: can?(){setState((){coin-=need; rupiah-=need;}); Navigator.pop(context); ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Tarik $label berhasil!')));} : null, child: Text('Tarik')),
+    ));
+  }
   @override
-  void dispose(){ _controller.dispose(); gameTimer?.cancel(); spawnTimer?.cancel(); _rewardedAd?.dispose(); super.dispose(); }
+  void dispose(){ _controller.dispose(); super.dispose(); }
   @override
   Widget build(BuildContext context) {
-    return Scaffold(body: Container(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF7DE2FF), Color(0xFF9BE89E)])), child: SafeArea(child: Column(children: [
-      Padding(padding: EdgeInsets.all(10), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        Container(padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)), child: Row(children: [Icon(Icons.monetization_on, color: Colors.orange, size: 20), SizedBox(width: 5), Text('$coin', style: TextStyle(fontWeight: FontWeight.bold))])),
-        Container(padding: EdgeInsets.symmetric(horizontal: 14, vertical: 6), decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(20)), child: Text('Misi $misi/20 ${_formatTimer(timerSec)} ${_isAdReady? "AD READY" : "LOADING AD"}', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10))),
-        Container(padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)), child: Text('Rp $rupiah', style: TextStyle(fontWeight: FontWeight.bold))),
-      ])),
-      Container(margin: EdgeInsets.symmetric(horizontal: 12), padding: EdgeInsets.symmetric(horizontal: 12, vertical: 5), decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(20)), child: Text('1x Main = 30-50 Coin | Tarik Rp 100 s/d 100RB', style: TextStyle(color: Colors.white, fontSize: 11))),
-      Expanded(child: LayoutBuilder(builder: (ctx, c)=> Stack(children: [for(int i=0;i<bubbles.length;i++) Positioned(left: bubbles[i].x*c.maxWidth, top: bubbles[i].y*c.maxHeight, child: GestureDetector(onTap: ()=>_tapBubble(i), child: Container(width: bubbles[i].size, height: bubbles[i].size, decoration: BoxDecoration(color: bubbles[i].color, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 3)), child: Icon(Icons.lock_open_rounded, color: Colors.white))))]))),
-      Container(margin: EdgeInsets.all(12), padding: EdgeInsets.all(16), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Main $misi x', style: TextStyle(fontWeight: FontWeight.bold)), Text('Coin kesimpen otomatis', style: TextStyle(fontSize: 11, color: Colors.grey))]),
-        ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.blue), onPressed: _showTukarSaldo, child: Text('TUKAR SALDO', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-      ])),
-    ]))));
+    return Scaffold(
+      body: Container(
+        decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF7DE2FF), Color(0xFFB0F5B5)])),
+        child: SafeArea(child: Column(children: [
+          Padding(padding: EdgeInsets.all(10), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Container(padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)), child: Row(children: [Icon(Icons.monetization_on, color: Colors.amber), SizedBox(width: 6), Text('$coin Koin', style: TextStyle(fontWeight: FontWeight.bold))])),
+            Container(padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)), child: Text('Rp $rupiah', style: TextStyle(fontWeight: FontWeight.bold))),
+          ])),
+          Container(margin: EdgeInsets.symmetric(horizontal: 10), padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(20)), child: Text('TAP = 1 KOIN + IKLAN = 30-50 KOIN | Tarik Rp 100 s/d 100RB', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w500))),
+          Expanded(child: LayoutBuilder(builder: (ctx, c)=> Stack(children: [
+            for(int i=0;i<bubbles.length;i++) Positioned(
+              left: bubbles[i].x*c.maxWidth, top: bubbles[i].y*c.maxHeight,
+              child: GestureDetector(onTap: ()=>_tapBubble(i), child: Container(width: bubbles[i].size, height: bubbles[i].size, decoration: BoxDecoration(color: bubbles[i].color, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 3), boxShadow: [BoxShadow(blurRadius: 5)]), child: Icon(Icons.touch_app, color: Colors.white))),
+            )
+          ]))),
+          Container(margin: EdgeInsets.all(12), padding: EdgeInsets.all(16), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('TAP TERUS!', style: TextStyle(fontWeight: FontWeight.bold)), Text('Coin auto kesimpen', style: TextStyle(fontSize: 11, color: Colors.grey))]),
+            ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.blue), onPressed: _showTukar, child: Text('TUKAR SALDO', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+          ])),
+        ])),
+      ),
+    );
   }
 }
